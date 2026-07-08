@@ -1,0 +1,603 @@
+# GAME OF LIFE — Design Reference Document
+
+**Status:** Living document, actively under design. Update in place as decisions lock in.
+
+---
+
+## 1. Core Philosophy (Locked)
+
+Game of Life is an RPG whose purpose is to help a person move from struggling to thriving by rewarding **sustainable, balanced growth** — not productivity, not optimization, not grinding.
+
+**Rewards:** Effort, Balance, Consistency, Exploration, Sustainable growth.
+**Does not reward:** Burnout, infinite optimization, overloading, grinding one area at the expense of others.
+
+**The central design question every system must answer:**
+> "How much responsibility can this person sustainably handle?"
+> — NOT "How productive is this person?"
+
+---
+
+## 2. Three Core Systems (Locked)
+
+### 2.1 XP — Visible
+Represents effort. Creates dopamine/reward. Dynamic based on difficulty, priority, area weight, and level modifiers. Drives progress bars and immediate satisfaction.
+
+### 2.2 Capacity — Hidden
+Represents how much responsibility the player can sustainably handle. Rarely shown directly. Drives Good Day requirements, scaling, burnout prevention, difficulty balancing. **Not a currency.**
+
+**Structure (Locked — Hybrid model):**
+- **5 per-area hidden Capacity stats**, one per Main Area: Physical Health, Career, Mental Health, Relationships, Exploration.
+- These roll up into **1 Global Capacity score** used for level-gating, via a **weighted average** (Section 4).
+- Per-area Capacity governs whether a *day* counts as "good" for that area. Global Capacity governs whether a *level-up* is earned.
+
+### 2.3 Good Days — Semi-visible
+Represents balanced living. Based on **percentages of XP targets**, never raw task counts. Categories: Habits, Missions, Commitments, Main Areas. Threshold ≈ 80%. Targets are capped — overflow above target is rewarded but never mandatory (see Section 6).
+
+**Leveling requires BOTH:**
+- Total XP (effort)
+- Good Days, measured as a **hybrid gate** (Section 5)
+
+Effort without balance does not level the player. Balance without effort does not level the player.
+
+---
+
+## 3. Two Parallel Progression Systems (Locked)
+
+### Growth Phase
+Builds a healthy life. Levels = increasing sustainable capacity. Reaches a soft cap around **Level 12–15**.
+
+### Mastery Phase
+Maintains and deepens the healthy life already built. Never really ends. Fed by: Good Day streaks, balance streaks, exploration, new skills/habits, long-term achievements, titles, overflow rewards.
+
+**Critical structural rule:** Mastery-phase rewards (titles, exploration unlocks, streak multipliers) are NOT the same currency as Growth-phase leveling XP. This is what keeps overflow/optimization from becoming a backdoor grind path (Section 6).
+
+---
+
+## 4. Capacity Architecture (Locked, including numbers)
+
+### 4.1 Rollup Math
+Global Capacity = **weighted average** of the 5 per-area Capacity stats.
+
+This means: a weak area drags the average down, but doesn't zero out progress in strong areas. A player cannot, however, fully compensate for one neglected area by maxing another — the weak area's pull is proportional to its weight, not erased.
+
+### 4.2 Area Weights Shift by Level (Locked, including numbers)
+
+Foundation areas (Physical Health, Mental Health) are weighted **higher** early on, since a struggling/rebuilding player's sustainable capacity is most bottlenecked by basic stability — not yet by a full, balanced life. Weights shift gradually toward Career, Relationships, and Exploration as the player advances.
+
+**Two design decisions that shape this:**
+
+1. **Continuous curve, not flat milestone plateaus.** Weights shift smoothly level-by-level rather than jumping at milestone boundaries. A step-function (e.g. "Foundation = 34% through Milestone I, then suddenly 28% at the start of Milestone II") would create a cliff exactly where the S-curve philosophy says there shouldn't be one — a player who correctly prioritized stabilizing first would suddenly face pressure to perform across three more areas all at once the moment they cross a level boundary.
+2. **Foundation never fully equalizes, even at Level 15.** Physical and Mental Health are *load-bearing* for the other three areas in a way that isn't symmetric — it's much harder to sustain a healthy social life or pursue exploration while physically or mentally unwell, but not really true in reverse. So even at the Healthy Life endpoint, Foundation areas stay "first among equals" (22% each) rather than converging to a flat 20% each alongside Career/Relationships/Exploration (18.7% each).
+
+**The curve uses a smootherstep ease** (not linear), concentrating most of the actual weight movement in Levels 5–11 — the Momentum/Growth/early-Balance range — where the player has enough scaffolding to absorb a shifting definition of "balanced." Levels 1–2 are nearly flat (Foundation dominance holds steady through the most fragile part of the game), and Levels 12–15 flatten again as the curve settles near its endpoint.
+
+| Level | Milestone | Physical (each) | Mental (each) | Career (each) | Relationships (each) | Exploration (each) |
+|---|---|---|---|---|---|---|
+| 1 | Stability | 34.0% | 34.0% | 10.7% | 10.7% | 10.7% |
+| 2 | Stability | 34.0% | 34.0% | 10.7% | 10.7% | 10.7% |
+| 3 | Stability | 33.7% | 33.7% | 10.9% | 10.9% | 10.9% |
+| 4 | Momentum | 33.2% | 33.2% | 11.2% | 11.2% | 11.2% |
+| 5 | Momentum | 32.3% | 32.3% | 11.8% | 11.8% | 11.8% |
+| 6 | Momentum | 31.0% | 31.0% | 12.6% | 12.6% | 12.6% |
+| 7 | Growth | 29.6% | 29.6% | 13.6% | 13.6% | 13.6% |
+| 8 | Growth | 28.0% | 28.0% | 14.7% | 14.7% | 14.7% |
+| 9 | Growth | 26.4% | 26.4% | 15.7% | 15.7% | 15.7% |
+| 10 | Balance | 25.0% | 25.0% | 16.7% | 16.7% | 16.7% |
+| 11 | Balance | 23.7% | 23.7% | 17.5% | 17.5% | 17.5% |
+| 12 | Balance | 22.8% | 22.8% | 18.1% | 18.1% | 18.1% |
+| 13 | Healthy Life | 22.3% | 22.3% | 18.5% | 18.5% | 18.5% |
+| 14 | Healthy Life | 22.0% | 22.0% | 18.6% | 18.6% | 18.6% |
+| 15 | Healthy Life | 22.0% | 22.0% | 18.7% | 18.7% | 18.7% |
+
+Each row sums to 100%. Global Capacity at any level = Σ(area Capacity × that level's weight for the area).
+
+*(Formula reference, for implementation: `t = (level-1)/14`; `ease = smootherstep(t) = t³(t(6t-15)+10)`; `foundation_weight = 0.34 + (0.22-0.34)×ease`; `other_weight = (1 - 2×foundation_weight)/3`.)*
+
+### 4.3 Decay (Locked, including numbers)
+Neglected areas **actively decay** — but gently, and with hard protections:
+
+| Rule | Value | Detail |
+|---|---|---|
+| Grace window | **3 days** of zero activity | No penalty during this window — a short break costs nothing |
+| Decay rate | **0.5% of area Capacity per day** past grace window | Compound decay: remaining = (1 − 0.005)^days |
+| Decay cap | **18% maximum loss per neglect cycle** | Cycle resets on re-engagement — floor kicks in around day 39 past grace window (~6 weeks of neglect) |
+| Floor protection | Area Capacity never falls below the **previous milestone's entry floor** | You can lose recent gains, never your earned foundation |
+| Re-engagement bonus | **1× the area's normal daily XP**, on top of normal XP, first day back | Subsidizes the hardest part of any habit — restarting |
+| Lifetime totals | Decay **never** touches lifetime XP or Good Day counts | Permanent — decay only slows future Capacity growth |
+
+**What counts as "engagement" that resets the decay clock (Locked — resolved during pre-build audit):** any completed Task in that area — Habit, Main Task, or Chore — resets the neglect clock. This was previously undefined (an earlier stress-test simulation used Habit-only as a shortcut, but that was never actually locked as a rule). Restricting resets to Habits only would be an arbitrary stricter bar with no stated rationale; someone completing a Main Task or Chore in an area is clearly not neglecting it, even if that day's Habit was skipped.
+
+**Re-engagement bonus eligibility (Locked — resolved during pre-build audit):** the bonus only fires after a **genuine lapse** — meaning decay had actually started (days since last activity exceeded the 3-day grace window). A normal 1-2 day gap within the grace window is just ordinary life and doesn't trigger a special "welcome back" reward; the bonus exists specifically to subsidize recovering from a real setback, not to reward routine variation.
+
+**Day boundary (Locked — resolved during pre-build audit):** a "day" for Good Day %, decay day-counting, and all rolling-window calculations is defined as midnight-to-midnight in the player's local timezone. Simplest reasonable default for a single-user app; revisit only if multi-timezone use becomes relevant.
+
+**What these numbers feel like across real timescales** (days past grace window):
+
+| Neglect duration | Capacity lost | Feel |
+|---|---|---|
+| 7 days | ~3.4% | Light sting — barely noticeable |
+| 14 days | ~6.8% | Noticeable — a clear signal to return |
+| 30 days | ~14.0% | Real but recoverable — one bad month |
+| 39 days | ~18% → floor activates | Cap kicks in, decay stops here |
+| 60–90 days | Held at 82% floor | System holds — no further punishment |
+
+**The tier cap in plain terms:** the worst a single neglect cycle can do is drop an area by ~18% of its current Capacity — approximately one level's worth of growth. You cannot decay your way back to Level 1 territory from Level 10. The floor protection ensures that even months of neglect just pauses progress rather than erasing it.
+
+> ⚠️ **Design risk flagged and accepted:** Tight grace window (3 days) + active decay + no explicit "life happens" pause mechanic means these numbers are carrying the full weight of protecting someone through a real rough patch. This was deliberate — but remains **#1 playtesting watch item**. If real users report the decay feeling punishing during genuinely hard life moments, soften the rate first (0.5% → 0.3%) before touching the cap or grace window.
+
+---
+
+## 5. Good Day → Level Gate (Locked, including numbers)
+
+A level-up requires clearing **both**:
+
+1. **Total XP threshold** for that level (effort) — see Section 7.3
+2. **Hybrid Good Day gate:**
+   - **Lifetime Good Day count** ≥ threshold for that level, AND
+   - **Rolling-window Good Day rate** ≥ 50% over the last N days (window widens by milestone) at the moment of level-up attempt
+
+The rate floor prevents **front-loading**: grinding Good Days hard in one period then coasting on a lifetime count while living unbalanced recently. Both numbers must be true *right now*, not just *ever*.
+
+### 5.1 Tutorial Level 0 — "Awakening" (New — retention fix)
+
+Exists *outside* the normal level structure. Its sole purpose: let the player feel the game's core reward loop before they've invested 4+ weeks. Name TBD (placeholder: "Awakening").
+
+- **Good Days required:** 7
+- **Micro-milestone at:** 3 Good Days (~3 days in)
+- **Real-time at 70% rate:** ~1.5 weeks
+- **Rolling window:** 14 days, 50% floor
+- **No XP threshold (Locked — resolved during pre-build audit):** Tutorial gates purely on Good Day count, not XP. This is deliberate, not an omission — Tutorial's job is activation (proving the core loop feels good), not effort-gating. XP thresholds begin at Level 1.
+- **Graduates into Level 1** with a small named celebration. **The active Goal/Path carries over automatically (Locked — resolved during pre-build audit)** — a player never has to re-select or re-confirm their Path when moving from Tutorial into Level 1; the same Goal simply continues.
+
+### 5.2 Per-Level Good Day Table (Locked)
+
+Micro-milestones fire at ~45% of each level's Good Day count — a visible intermediate reward that fires within every level, so no level ever feels like a silent grind. Micro-milestones are named achievements with a small XP bonus (**10% of that level's total XP requirement** — e.g. Level 1's 450 XP requirement means a 45 XP micro-milestone bonus), not level-ups.
+
+| Level | Milestone | GD needed | Micro at | Cumulative | Weeks at 70% | Rolling window |
+|---|---|---|---|---|---|---|
+| Tutorial | Awakening | 7 | 3 GD | 7 | ~1.5 wks | 14 days |
+| 1 | Stability | 10 | 4 GD | 17 | ~2.0 wks | 14 days |
+| 2 | Stability | 15 | 7 GD | 32 | ~3.1 wks | 14 days |
+| 3 | Stability | 15 | 7 GD | 47 | ~3.1 wks | 14 days |
+| 4 | Momentum | 15 | 7 GD | 62 | ~3.1 wks | 21 days |
+| 5 | Momentum | 17 | 8 GD | 79 | ~3.5 wks | 21 days |
+| 6 | Momentum | 22 | 10 GD | 101 | ~4.5 wks | 21 days |
+| 7 | Growth | 29 | 13 GD | 130 | ~5.9 wks | 28 days |
+| 8 | Growth | 38 | 17 GD | 168 | ~7.8 wks | 28 days |
+| 9 | Growth | 48 | 22 GD | 216 | ~9.8 wks | 28 days |
+| 10 | Balance | 57 | 26 GD | 273 | ~11.6 wks | 28 days |
+| 11 | Balance | 66 | 30 GD | 339 | ~13.5 wks | 28 days |
+| 12 | Balance | 73 | 33 GD | 412 | ~14.9 wks | 28 days |
+| 13 | Healthy Life | 78 | 35 GD | 490 | ~15.9 wks | 35 days |
+| 14 | Healthy Life | 80 | 36 GD | 570 | ~16.3 wks | 35 days |
+| 15 | Healthy Life | 80 | 36 GD | 650 | ~16.3 wks | 35 days |
+
+**Total Good Days (excl. Tutorial):** 643
+**Full arc at 70% Good Day rate:** ~919 days ≈ **2.5 years**
+**Full arc at 80% Good Day rate:** ~804 days ≈ **2.2 years**
+
+### 5.3 Rolling Window & Rate Floor (Locked)
+
+Window widens at milestone boundaries (not level boundaries) to avoid cliff-edges between individual levels.
+
+| Milestone | Levels | Window | Rate floor | Gate reads as… |
+|---|---|---|---|---|
+| Awakening / Stability | Tutorial–3 | 14 days | 50% | "Good Day ≥7 of last 14 days" |
+| Momentum | 4–6 | 21 days | 50% | "Good Day ≥11 of last 21 days" |
+| Growth / Balance | 7–12 | 28 days | 50% | "Good Day ≥14 of last 28 days" |
+| Healthy Life | 13–15 | 35 days | 50% | "Good Day ≥18 of last 35 days" |
+
+**Rate floor stays at 50% across all milestones** — "a Good Day at least every other day recently." Humane but real: someone going through a genuinely hard stretch can still clear this once they stabilize, without it requiring a perfect recent record.
+
+### 5.4 First Month Experience (Locked)
+
+The A+B+C merger delivers **3 reward moments in the first ~3 weeks:**
+
+1. **Tutorial graduation** (~1.5 weeks) — first level-up ever, game's core loop felt for the first time
+2. **Level 1 micro-milestone** (~2.3 weeks) — named achievement, small XP bonus
+3. **Level 1 level-up** (~3.3 weeks) — first real level-up in the main progression
+
+A player who would have quit in week 1 of the original design has now felt the reward loop *twice* before they would have leveled up even once under the old structure.
+
+---
+
+## 6. XP Weighting & Overflow (Locked, including numbers)
+
+### 6.1 Tiered Task XP (Locked, including numbers)
+
+Not all tasks are worth the same XP. Four tiers exist — not three, because Habits are structurally distinct from both Chores and Side Quests and need their own tier.
+
+**Tier definitions and relative XP values (Chore = 1.0 baseline):**
+
+| Tier | Relative XP | Examples | Role in the system |
+|---|---|---|---|
+| **Main Task** | 4.0× | Finishing a project milestone, hitting a weekly/monthly Career goal | Moves a goal forward — what levels are ultimately gating on |
+| **Habit** | 2.5× | Exercise, sleep routine maintained, instrument practice, reading | Recurring, low-friction; earns importance through *compounding* via Good Days/Capacity, not per-instance size |
+| **Side Quest** | Bonus XP only | Trying a new hobby, optional skill-building, a "nice to have" | Valuable but not goal-critical — feeds Mastery rewards and overflow, never Good Day % |
+| **Chore** | 1.0× | Laundry, admin, one-off maintenance | Prevents decline; contributes to Good Day % but not growth |
+
+**Why Side Quests are Bonus XP, not a Good Day category (Locked):**
+Routing Side Quests out of the Good Day calculation keeps the Good Day definition clean — "did you take care of yourself and make real progress today?" A Good Day must be achievable without Side Quests, because Good Days are the consistency mechanism, and consistency requires a bar clearable on a genuinely hard week. With Side Quests in the pool, skipping optional exploration on a busy week would silently drag down a player's %, which is exactly the invisible checklist pressure this game exists to prevent. Side Quest XP feeds the overflow / Mastery reward stream instead — exploration has a home in the system without being mandatory.
+
+### 6.2 Good Day % Calculation — Per-Category, Not Pooled (Locked, including numbers)
+
+Good Day % is **not** a single pooled XP total. It's calculated per-category, then combined using category weights. This prevents any one tier from dominating the Good Day % simply by being more numerous on a given day (e.g. three Habits vs. one Main Task would distort a pooled sum, making Habits silently outweigh the Main Task regardless of tier values).
+
+**Category weights:**
+
+| Category | Weight | Reasoning |
+|---|---|---|
+| **Habit** | 40% | Habits are the mechanism of sustainable growth — missing them should always register |
+| **Main Task** | 40% | Equal to Habits — effort and sustainable living matter equally, neither dominates |
+| **Chore** | 20% | Prevents decline; can't be ignored, but skipping doesn't tank a day alone |
+| **Side Quest** | — | Bonus XP only, not included in Good Day % |
+
+**Good Day threshold: 80%** (confirmed, unchanged)
+
+**Good Day % = (Habit completion % × 0.40) + (Main Task completion % × 0.40) + (Chore completion % × 0.20)**
+
+**Stress-test results against key scenarios:**
+
+| Scenario | Good Day % | Verdict |
+|---|---|---|
+| Full day — all categories hit | 100% | ✅ Good Day |
+| Skips Main Task entirely | 60% | ❌ Not a Good Day |
+| Skips Habits entirely | 60% | ❌ Not a Good Day |
+| Skips Chores entirely | 80% | ✅ Good Day (barely) |
+| Only Chores, avoids everything else | 20% | ❌ Not a Good Day |
+| Half Main Task + full Habits + Chores | 80% | ✅ Good Day |
+| Full Main Task + half Habits + Chores | 80% | ✅ Good Day |
+| Half everything (tired, low-effort day) | 50% | ❌ Not a Good Day |
+
+**Key behaviours to note:**
+- Skipping Main Task and skipping Habits hurt *identically* (both −40%) — the 40/40 symmetry encodes "effort and sustainable living are equally non-negotiable" as a felt mechanical reality, not just a stated philosophy.
+- A half-effort day in one category (F, G) still passes as a Good Day if you showed up everywhere else — the system is forgiving of partial days as long as you didn't abandon a whole category.
+- Pure chore-grinding (E) caps at 20% — maintenance tasks alone can never constitute a Good Day.
+- Consistently skipping Chores (D) scrapes the 80% threshold — technically passing, but with zero margin. Real-world lapsed chores compound into stress that will show up in Habits and Main Tasks soon anyway; the system doesn't need to punish it directly.
+
+> ✅ **Per-area XP calibration resolved:** the 4.0×/2.5×/1.0× tier ratios are universal across all areas. Absolute XP values scale with each level's daily Capacity cap (Section 7.3-7.4), so a "Main Task" in Career and a "Main Task" in Exploration carry the same relative weight even though the area's overall daily budget differs by level and by area weight.
+
+### 6.3 Career Reframe — Weekly XP Band (Locked, including numbers)
+
+Career's "3–4 meaningful tasks/day" becomes a **weekly XP band**, not a daily count. The week is the unit of judgment; a bad single day does not tank Career's Good Day contribution.
+
+**Level 15 (Healthy Life) day composition:**
+
+| Tier | Daily count | XP per unit | Daily XP |
+|---|---|---|---|
+| Main Task | 3.5 avg | 4.0× | 14.0 |
+| Habit | 1 | 2.5× | 2.5 |
+| Chore | 2 | 1.0× | 2.0 |
+| **Daily total** | | | **18.5** |
+
+**Weekly structure:** 5 weekdays (full composition) + 2 weekend days (lighter: 1 Main Task + 1 Habit + 2 Chores = 8.5 XP each).
+
+**Level 15 weekly target: ~110 XP**
+- 100% target: ~110 XP (full Healthy Life week)
+- 80% band: ~88 XP (solid week, Good Day territory)
+- 60% floor: ~66 XP (minimum to count Career as "on track")
+
+**The floor in practice:** hitting the 60% floor on a rough week only requires ~1.3 Main Tasks/weekday on average — genuine forgiveness for hard stretches, without abandoning the week entirely.
+
+**Career XP scales across all 15 levels** using the same smootherstep S-curve as the weight table (Section 4.2), interpolating from Level 1 (~31 XP/week) up to Level 15 (~110 XP/week). Steepest growth lands in Levels 4–10.
+
+| Level | Milestone | Weekly Target (100%) | 60% Floor |
+|---|---|---|---|
+| 1 | Stability | ~31 XP | ~19 XP |
+| 3 | Stability | ~37 XP | ~22 XP |
+| 5 | Momentum | ~54 XP | ~32 XP |
+| 7 | Growth | ~78 XP | ~47 XP |
+| 9 | Growth | ~98 XP | ~59 XP |
+| 11 | Balance | ~108 XP | ~65 XP |
+| 13 | Healthy Life | ~110 XP | ~66 XP |
+| 15 | Healthy Life | ~110 XP | ~66 XP |
+
+### 6.4 Overflow (Locked, including formula)
+
+Going above 100% of a daily/weekly target produces **diminishing-returns overflow XP** via geometric decay — never a flat 1:1 continuation, never a hard cutoff.
+
+**Two separate output streams from the same overflow input:**
+
+| Stream | Rate | Decay | Reasoning |
+|---|---|---|---|
+| **Growth XP** | 25% of normal on unit 1 | Geometric, r = 0.30 | Must be mathematically irrational to grind by unit 3 |
+| **Mastery XP** | 100% of normal, flat | None | Mastery rewards can't speed leveling — no incentive to suppress |
+
+**Growth XP formula:**
+> Growth XP for overflow unit n = **0.25 × 0.30^(n-1)** × (normal XP unit value)
+
+**Per-unit breakdown:**
+
+| Overflow unit | Growth XP value | Feel |
+|---|---|---|
+| 1st | 25.0% of normal | Noticeable — an exceptional day feels rewarded |
+| 2nd | 7.5% of normal | Clear drop — diminishing returns are visible |
+| 3rd | 2.2% of normal | Irrational to grind — ~45 units needed to equal one normal XP |
+| 4th | 0.7% of normal | Essentially symbolic |
+| 5th+ | < 0.2% of normal | Negligible |
+
+**Growth XP ceiling:** the geometric series sum (0.25 / (1 − 0.30)) = **~36% of a normal XP unit** — the absolute maximum Growth XP a player could ever earn from overflow in a day, regardless of how much extra they do. This hard cap is what makes "optional" mathematically enforced rather than relying on player willpower.
+
+**Design intent:** overflow should feel genuinely good on an exceptional day (unit 1 opens at 25%, which is noticeable) while making grinding irrational before unit 3. The Mastery stream running at full rate ensures a player who has a great day feels meaningfully rewarded — just through Mastery currency rather than level-up acceleration.
+
+---
+
+## 7. Level Structure & Milestones (Locked, including numbers)
+
+### 7.1 The Five Milestones (Locked)
+
+| Milestone | Name | Levels |
+|---|---|---|
+| 0 | Awakening (Tutorial) | Level 0 |
+| I | Stability | 1–3 |
+| II | Momentum | 4–6 |
+| III | Growth | 7–9 |
+| IV | Balance | 10–12 |
+| V | Healthy Life | 13–15 |
+
+Growth Phase soft-caps at Level 15 (end of Milestone V). Mastery Phase begins after, and does not end.
+
+### 7.2 Level 1 Definition (Locked)
+Represents a struggling or rebuilding player. A successful day at Level 1 = **maintaining sleep + completing one meaningful task.** Must remain genuinely accessible to someone dealing with depression or actively rebuilding their life — this is a hard design constraint on every number that follows, not just a narrative flavor note.
+
+### 7.3 XP-Per-Level Table (Locked, including numbers)
+
+**Anchor derivation** (so implementation is internally consistent, not arbitrary):
+- Level 15 Career weekly XP = 110 (locked, Section 6.3)
+- Career area weight at Level 15 = 18.7% (locked, Section 4.2)
+- Therefore: full daily XP across all 5 areas at Level 15 = (110 / 0.187) / 7 = **~84 XP/day**
+- Level 1 equivalent (Career weekly ~31 XP, weight 10.7%): (31 / 0.107) / 7 = **~41 XP/day**
+- XP-per-level = daily capacity × days at 70% Good Day rate × 80% efficiency (not every day is perfect)
+
+**Critical implementation note:** XP targets are *not* flat across levels. Daily XP capacity scales with the player's Capacity stat (Section 7.4) — a Level 5 player's "full day" generates ~47 XP, a Level 12 player's generates ~81 XP. The XP-per-level table already accounts for this scaling; implementing it as a flat daily target would break the curve.
+
+**Per-area ceiling formula (Locked — added after stress-testing, see Section 12):**
+> **Per-area daily XP ceiling = Global Daily XP Cap (this level) × that area's current weight (Section 4.2)**
+
+The Daily Cap figures above are a **blended total across all 5 areas** — they were never meant to be one area's ceiling. Without a per-area split, a player legitimately focused on only 1-2 areas (which is often the *correct* Level 1 strategy — depth over breadth) looks like they're falling short of "the daily cap" when they're actually operating well within their real ceiling for the areas they've engaged. This formula closes that gap and gives Section 6.4's overflow mechanic (which needs a ceiling to trigger past) a concrete per-area value to check against.
+
+**Example at Level 1** (Global Daily Cap = 41 XP, Physical/Mental weight = 34% each): Physical Health's ceiling = 41 × 0.34 ≈ **14 XP/day**. A player pursuing a Path spanning both Foundation areas has a combined ceiling of ~28 XP/day for that Path — not the full 41.
+
+**A related, deliberate consequence — not a bug:** a player with genuinely zero baseline activity in 3 of 5 areas (no Habits, no Chores, nothing — not just no active Goal) will accumulate total XP toward the level's cumulative threshold more slowly than the "weeks at 70%" column assumes, since that column implicitly assumes some baseline life-maintenance across all areas (sleep, staying in touch with people, showing up to work — none of which require an active Goal, since Habits/Chores never need goal-linkage per Section 8.2). This is thematically correct, not a flaw: the core design question is "how much responsibility can this person sustainably handle," and someone genuinely only managing 1-2 areas of life right now has lower sustainable capacity than someone managing five — slower leveling honestly reflects that, rather than punishing it.
+
+| Level | Milestone | XP/level | Daily cap | Cumulative XP | Weeks at 70% |
+|---|---|---|---|---|---|
+| 1 | Stability | 450 | 41 XP/day | 450 | ~2.0 wks |
+| 2 | Stability | 700 | 41 XP/day | 1,150 | ~3.0 wks |
+| 3 | Stability | 700 | 42 XP/day | 1,850 | ~3.0 wks |
+| 4 | Momentum | 750 | 44 XP/day | 2,600 | ~3.0 wks |
+| 5 | Momentum | 900 | 47 XP/day | 3,500 | ~3.4 wks |
+| 6 | Momentum | 1,300 | 52 XP/day | 4,800 | ~4.4 wks |
+| 7 | Growth | 1,850 | 57 XP/day | 6,650 | ~5.9 wks |
+| 8 | Growth | 2,700 | 62 XP/day | 9,350 | ~7.7 wks |
+| 9 | Growth | 3,750 | 68 XP/day | 13,100 | ~9.9 wks |
+| 10 | Balance | 4,750 | 73 XP/day | 17,850 | ~11.6 wks |
+| 11 | Balance | 5,850 | 78 XP/day | 23,700 | ~13.4 wks |
+| 12 | Balance | 6,750 | 81 XP/day | 30,450 | ~14.9 wks |
+| 13 | Healthy Life | 7,350 | 83 XP/day | 37,800 | ~15.9 wks |
+| 14 | Healthy Life | 7,650 | 84 XP/day | 45,450 | ~16.3 wks |
+| 15 | Healthy Life | 7,650 | 84 XP/day | 53,100 | ~16.3 wks |
+
+**Total XP to reach Level 15: 53,100 XP**
+
+Levels 14 and 15 share the same XP requirement (7,650) and Good Day count (80) deliberately — the last two Healthy Life levels aren't about adding more, they're about proving you can sustain what you've built.
+
+### 7.4 Capacity-Per-Level Table (Locked, including numbers)
+
+Capacity is measured on a **0–100 scale per area**. All five areas use the same raw Capacity value at each level — the weight difference between Foundation and Other areas is applied at rollup time (Section 4.2), not baked into different per-area values. This keeps the system simple to implement and reason about.
+
+**Decay floor** = area Capacity × (1 − 0.18), i.e. the 18% tier cap from Section 4.3. This is the lowest an area can fall in a single neglect cycle, and the floor for "previous milestone" protection.
+
+| Level | Milestone | Per-area Capacity | Decay floor | What this level represents |
+|---|---|---|---|---|
+| 1 | Stability | 10 | 8 | Barely holding on — sleep and one task |
+| 2 | Stability | 10 | 8 | Starting to stabilize the basics |
+| 3 | Stability | 12 | 10 | Foundation is fragile but present |
+| 4 | Momentum | 16 | 13 | Routines beginning to stick |
+| 5 | Momentum | 23 | 19 | Consistent enough to build on |
+| 6 | Momentum | 32 | 26 | Real momentum — habits are consolidating |
+| 7 | Growth | 43 | 35 | Actively growing across multiple areas |
+| 8 | Growth | 55 | 45 | Halfway — life is meaningfully better |
+| 9 | Growth | 67 | 55 | Growth is visible to others, not just you |
+| 10 | Balance | 78 | 64 | Balance is intentional, not accidental |
+| 11 | Balance | 87 | 71 | Setbacks happen but don't derail you |
+| 12 | Balance | 94 | 77 | Near the top — finishing the hardest pieces |
+| 13 | Healthy Life | 98 | 80 | Almost there — depth over breadth |
+| 14 | Healthy Life | 100 | 82 | Full capacity — can you hold it? |
+| 15 | Healthy Life | 100 | 82 | Proven — the Healthy Life is real and sustained |
+
+**S-curve formula** (same smootherstep used throughout): `t = (level−1)/14; ease = t³(t(6t−15)+10); Capacity = 10 + 90 × ease`
+
+**Overflow XP and Capacity:** the Growth XP ceiling from overflow (Section 6.4, ~36% of a normal XP unit per day) is calculated against the player's *current per-area daily XP ceiling* (this section, not the blended global cap) — so overflow's absolute value scales with both Capacity and the specific area's weight, keeping it proportionally capped at every level and every area.
+
+---
+
+## 8. Goal → Milestone → Task Structure (Locked)
+
+**This section deliberately contains no prescribed content.** No default habit list, no mandatory task library. What Level 15 looks like for one player (marathon running, therapy, a novel) may look nothing like another player's Healthy Life. The game provides *structure*; the player provides *substance*. This section defines that structure and closes a real gap in the tier system: until now, nothing actually enforced that a "Main Task" moves a goal forward — it was a definition, not a mechanic.
+
+### 8.1 The Three Layers (Locked)
+
+| Layer | What it is | Who authors it | Example |
+|---|---|---|---|
+| **Goal** | A player-defined outcome. Tied primarily to one Main Area, can tag secondary areas. | Player (or selected from a Path template) | "Run a marathon" |
+| **Milestone** | 2–5 sequential, concrete, observable checkpoints under a Goal. | Player (or inherited from a Path template) | "Complete a 5K without stopping" |
+| **Task** | The actual day-to-day action. Tagged with a tier (Main Task / Habit / Chore) at creation. | Player | "Run 3× this week" (Habit) or "Register for the 5K" (Main Task) |
+
+### 8.2 The Main Task Linkage Rule (Locked — closes the tier-gaming gap)
+
+**A task can only carry Main Task tier (4.0× XP) if it is linked to an active Milestone under an active Goal.** This is the objective test behind "moves a goal forward" — previously an unenforced definition, now a mechanical requirement. A player cannot self-declare an arbitrary task as a Main Task to farm XP; it has to trace back to something they said mattered.
+
+- **Habits do not require goal-linkage.** Many Habits are foundational (sleep, exercise, a daily routine) and aren't naturally goal-shaped — they can exist standalone at Habit tier (2.5×), or be linked to a Goal's Milestone if the player wants (e.g. "practice guitar 20 min" under a "Learn guitar" Goal).
+- **Chores never carry Main Task tier**, by definition — they're maintenance, not progress, regardless of what they're linked to.
+
+### 8.3 Goal Requirement at Level 1 (Locked — reconciled with accessibility)
+
+Every player must have at least one active Goal — this is required, not optional, so Main Tasks always trace back to something real. **But requiring a goal does not mean requiring authorship.** Selecting a pre-built Path template (Section 8.4) satisfies the requirement just as fully as writing a custom Goal from scratch. This matters most at Level 1: someone rebuilding or dealing with depression may not be ready to articulate ambitions, and the blank-page problem is a real barrier for exactly the player this game most needs to be accessible to. A **"Just Stabilize" Path** (Section 8.4) exists specifically so satisfying the requirement takes a couple of taps, not a creative-writing exercise.
+
+### 8.4 Path Templates — Cross-Cutting, Optional, Inspirational (Locked shape; illustrative examples only)
+
+Path templates are **not organized per Main Area** — a real goal rarely respects those boundaries (getting fit touches Physical and Mental; building a career touches Career and Relationships). Instead, Paths are built around common cross-cutting life goals people actually have. Each Path is a pre-built Goal + example Milestones + example Tasks (pre-tagged by tier) that a player can adopt as-is, edit freely, or ignore entirely in favor of a fully custom Goal.
+
+**Illustrative examples (not an exhaustive library — more can be added over time as a content backlog, separate from this core design spec):**
+
+| Path | Primary Area | Secondary Area(s) | Example Milestones | Example Tasks (tier) |
+|---|---|---|---|---|
+| **Just Stabilize** | Physical + Mental (Foundation) | — | "Maintain sleep routine for 2 weeks" → "Leave the house 3×/week" | Sleep on schedule (Habit) · Go for a short walk (Habit) · Text one friend back (Main Task, linked to Milestone 2) |
+| **Healthy Lifestyle** | Physical | Mental | "Exercise 3×/week for a month" → "Cook 4 balanced meals/week" | Gym session (Habit) · Meal-prep Sunday (Habit) · Sign up for a class (Main Task) |
+| **Bodybuilding** | Physical | Mental (discipline) | "Establish a training split" → "Hit first strength PR" → "Complete a 12-week program" | Lift per split (Habit) · Track macros (Habit) · Book a form-check session (Main Task) |
+| **Career Climber** | Career | Relationships | "Complete a certification" → "Lead a project" → "Get promoted" | Daily deep-work block (Habit) · Finish the certification (Main Task) · Schedule a mentor check-in (Main Task) |
+| **Creative Pursuit** | Exploration | Career | "Finish a short project" → "Share it publicly" → "Complete a larger body of work" | Daily practice session (Habit) · Finish draft/piece (Main Task) · Submit/publish (Main Task) |
+
+**What Paths are not:** a content wall the player must climb. A player who already knows exactly what they want (their own version of "become a data scientist" or "rebuild my relationship with my brother") skips Paths entirely and authors a custom Goal from Level 1 onward. Paths exist purely to lower the barrier for players who want structure but don't yet know what to build.
+
+### 8.5 Goal Lifecycle (Locked)
+
+Goals are not permanent commitments — treating them as such would reintroduce the burnout/rigidity this game exists to avoid.
+
+- **Draft → Active → Milestone completed (repeat) → Goal completed / archived**
+- Goals can be **paused or abandoned without penalty** — life changes, priorities shift, and a Goal becoming irrelevant isn't a failure. Abandoning a Goal doesn't touch lifetime XP or Good Day counts (consistent with the decay principle in Section 4.3: the system never punishes past progress).
+- A player can hold multiple active Goals simultaneously, across different Main Areas — this is expected, not discouraged, since a genuinely balanced life touches more than one area at once.
+
+---
+
+## 9. Mastery Phase (Locked, including numbers)
+
+Begins at Level 15 and **never ends.** XP and Levels stop being the primary currency — Mastery Phase runs on a separate system built around depth, sustained consistency, and identity rather than acquisition.
+
+### 9.1 Core Design Constraint (Locked)
+
+**Classic "streak" mechanics were explicitly rejected.** A traditional consecutive-day streak (miss one day, lose everything) is a well-known anxiety-inducing pattern — and it's the exact anti-pattern this entire game was built to reject: punishing any single imperfection wearing a friendly mask. Mastery Phase reuses the **rolling-window + rate-floor model already validated by the Good Day gate** (Section 5, stress-tested in Section 12) rather than introducing a fragile counter.
+
+### 9.2 Mastery Points — MP (Locked)
+
+A new currency, separate from Growth XP. Fed by:
+- Continued Good Days (small steady trickle — Mastery progress happens through normal life, not a separate grind)
+- Overflow XP (already routes here at full rate, Section 6.4)
+- Bonus XP from Side Quests (already locked, Section 6.1)
+- Long-term achievements (lump-sum awards)
+- Exploration (trying new Paths/skills)
+
+**MP earn rate:** 8 MP per Good Day. At a 70% Good Day rate, this generates ~2,044 MP/year baseline (before overflow, achievements, or exploration bonuses).
+
+**MP is earned per-area** — MP generated from activity within a specific Main Area counts only toward that area's Mastery Tier, not a shared pool. This is what makes "deepening" meaningful: a player advances the tiers that reflect where they're actually investing.
+
+### 9.3 Mastery Tiers — Per Area (Locked, including numbers)
+
+Five tiers per area, escalating cost (later tiers require genuinely rare, sustained depth — matching the "never really ends" promise):
+
+| Tier | MP needed | Cumulative MP | Years at ~40% focused effort |
+|---|---|---|---|
+| Committed | 500 | 500 | ~0.6 years |
+| Practiced | 900 | 1,400 | ~1.7 years |
+| Skilled | 1,600 | 3,000 | ~3.7 years |
+| Masterful | 2,900 | 5,900 | ~7.2 years |
+| Legendary | 5,250 | 11,150 | ~13.6 years |
+
+**13.6 years to Legendary is deliberate, not an oversight.** Mastery Phase represents genuine, decades-scale depth in one area of a life — the honest timescale for real mastery, not a quick coda tacked onto the end of Level 15. A player can pursue Legendary in one area while staying at Committed or Practiced in others; nothing forces uniform progress across all five.
+
+### 9.4 Balance Streak (Locked, including numbers)
+
+Rolling **60-day window**, **50% rate floor** — same hybrid logic as the Good Day gate, applied at a longer timescale appropriate to sustained life balance rather than incremental capacity growth. Reads as: "Good Day at least every other day, sustained over 2 months."
+
+**Balance Streak recognition tiers** (named achievements for sustained balance, not a fragile counter — each requires the 60-day rolling floor held continuously for the stated duration):
+
+| Recognition | Duration |
+|---|---|
+| 3 Months of Balance | 90 days |
+| 6 Months of Balance | 180 days |
+| 1 Year of Balance | 365 days |
+| 3 Years of Balance | 1,095 days |
+| 5 Years of Balance | 1,825 days |
+
+### 9.5 Titles (Locked, including perk sizing)
+
+Titles are unlocked at Mastery Tier milestones or by completing long-term Goals (Section 8's Goal structure). **They carry small mechanical perks, deliberately scoped to minimize becoming an optimization target:**
+
+- **Perks are decay-resilience only** (wider grace window, slower decay rate) — never XP or overflow boosts. This ties the reward to Mastery Phase's actual stated purpose ("maintain and deepen") rather than "acquire faster," so a perk only pays off *after* genuine depth is already built, rather than being a forward-looking incentive that could distort which Goals a player picks.
+- **Perks are area-locked** — a Title earned in Physical Health only affects Physical Health's decay, never bleeding into other areas or creating a "best area to grind for buffs" meta.
+- **Perks are capped, never eliminate decay entirely** — even at Legendary tier, decay is only reduced 20%, preserving decay's core role as a balance mechanism at every tier.
+
+| Tier | Grace window | Decay rate reduction | Effective decay rate |
+|---|---|---|---|
+| Committed | 3 days (baseline) | 0% | 0.500%/day |
+| Practiced | 4 days | 5% | 0.475%/day |
+| Skilled | 4 days | 10% | 0.450%/day |
+| Masterful | 5 days | 15% | 0.425%/day |
+| Legendary | 5 days | 20% | 0.400%/day |
+
+### 9.6 Exploration Unlocks (Locked shape, content TBD)
+
+MP can be spent (or achievements can unlock) new Path templates or narrative content — giving the Exploration Area a genuine payoff loop, consistent with Exploration being one of the five core reward pillars in Section 1. Specific unlockable content is a content-backlog item, not part of this core mechanical spec (same treatment as the Path template examples in Section 8.4).
+
+---
+
+## 10. Healthy Life Target — Reference (Locked, source spec)
+
+This is the *endpoint* of the Growth Phase — what Level 15 / Milestone V is building toward. Restated here for reference as numbers get built against it.
+
+**Physical Health:** Exercise 5x/week. Constant sleep routine. Balanced meals. Regular instrument practice.
+**Career:** 3–4 meaningful tasks/day *(→ reframed as weekly XP band, Section 6.3)*. Weekly goals achieved. Monthly goals achieved. Finish every project started.
+**Mental Health:** Read ≥1 book/month. Consistent therapy.
+**Relationships:** Healthy social life. Family time.
+**Exploration:** New hobbies. Travel every six months.
+
+---
+
+## 11. Open Items — Needs Numbers
+
+Everything below is shape-locked but value-undetermined. This is the active work queue.
+
+1. ~~**Area weight percentages** per Main Area, per Milestone~~ — ✅ **RESOLVED**, see Section 4.2 (continuous level-by-level curve, not milestone plateaus)
+2. ~~**Decay rate, tier-cap, re-engagement bonus**~~ — ✅ **RESOLVED**: 0.5%/day compound decay past 3-day grace window. 18% tier cap per cycle (floor activates ~day 39). Floor = previous milestone's Capacity entry floor. Re-engagement bonus = 1× area's normal daily XP on first day back. Lifetime totals immune. See Section 4.3.
+3. ~~**Lifetime Good Day count per level + rolling window length + rate floor %**~~ — ✅ **RESOLVED**: Tutorial Level 0 ("Awakening") = 7 GD. Levels 1-15 follow S-curve from 10 GD (L1) to 80 GD (L15). Total 643 GD across main game (~2.5 years at 70% rate). Micro-milestones at ~45% of each level's GD count. Rolling window widens by milestone (14→21→28→35 days). Rate floor = 50% throughout. See Section 5.
+4. ~~**Tiered XP weight ratios**~~ — ✅ **RESOLVED**: 4 tiers locked (Main Task 4.0× / Habit 2.5× / Chore 1.0× / Side Quest → Bonus XP only). Good Day category weights locked (Habit 40% / Main Task 40% / Chore 20%). Good Day threshold confirmed at 80%. See Section 6.1–6.2.
+5. ~~**Career weekly XP target value**~~ — ✅ **RESOLVED**: Level 15 target = ~110 XP/week. Scales via smootherstep S-curve from ~31 XP/week at Level 1. 60% floor (~66 XP) confirmed. See Section 6.3.
+6. ~~**Overflow diminishing-returns curve formula**~~ — ✅ **RESOLVED**: geometric decay, opening rate 25%, r = 0.30. Growth XP formula: 0.25 × 0.30^(n-1) × normal XP. Mastery XP: flat 100%, no decay. Growth XP ceiling: ~36% of a normal XP unit (hard cap via geometric series). See Section 6.4.
+7. ~~**XP-per-level table**~~ — ✅ **RESOLVED**: 450 XP (L1) to 7,650 XP (L15) via smootherstep S-curve. Total 53,100 XP across Growth Phase. Daily cap scales from 41 XP/day (L1) to 84 XP/day (L15). See Section 7.3.
+8. ~~**Capacity-per-level table**~~ — ✅ **RESOLVED**: 0–100 scale per area, smootherstep S-curve from 10 (L1) to 100 (L14-15). Decay floor = Capacity × 0.82. All five areas use same raw value; weight difference applied at rollup. See Section 7.4.
+
+---
+
+## 12. Stress Test — Simulated Player Walkthrough (Validation Record)
+
+Before designing the Mastery Phase, the full Growth Phase was run through a simulated 28-day playthrough (Tutorial → Level 1) to check whether the locked systems behave correctly *together*, not just individually. This section is a validation record, not a new design layer — it's preserved so future changes can be checked against what was actually verified.
+
+**Simulated player:** "Alex" — selects the "Healthy Lifestyle" Path (Section 8.4), spanning Physical + Mental. Daily plan: 1 Habit (workout), 1 Main Task due twice weekly (meal-prep, linked to Milestone), 1 Chore. A deliberate 5-day rough patch (days 15–19, simulating a work crunch) was included to test decay and recovery.
+
+**Finding 1 — Decay behaves exactly as intended.** During the 5-day lapse, Physical Capacity moved from 10.0 to 9.9 — a ~1% dip. At Level 1, absolute Capacity values are small enough that even a real lapse barely registers numerically. This validates the Level 1 accessibility constraint (Section 7.2) in practice, not just in principle: the protection designed for someone rebuilding actually shows up in the math.
+
+**Finding 2 — The rolling window / rate floor is a real mechanism, not decorative.** Alex's final 14-day Good Day rate landed at *exactly* 50% — precisely the rate floor (Section 5.3), with zero margin. One additional bad day in that window would have failed the gate. Confirms the front-loading protection has real teeth.
+
+**Finding 3 — The blended Daily Cap needed a per-area split (gap found and fixed).** Alex's best possible day (7.5 XP) looked like a severe shortfall against the Level 1 "41 XP/day" figure — until it became clear that figure was always a blended total across all 5 areas, never meant as one area's ceiling. **Fix locked:** per-area daily XP ceiling = Global Daily Cap × that area's current weight (now in Section 7.3). Under the corrected framing, Alex's real ceiling for her 2 active areas is ~28 XP/day, not 41.
+
+**Finding 4 — Narrow-focus players leveling more slowly is correct, not a bug.** Even against the corrected per-area ceiling, Alex's realistic task volume only fills ~27% of her actual ceiling — meaning she'll take longer than the "weeks at 70%" table suggests to hit the level's cumulative XP threshold. This was checked against the core design question (Section 1) and confirmed as intended: a player genuinely managing only 1-2 areas of life right now has lower sustainable capacity than one managing five, so slower leveling honestly reflects that rather than punishing it. Confirmed with Gus directly rather than assumed.
+
+**Net result:** three of four findings confirmed the system working as designed; one (per-area ceiling) was a genuine gap, now closed. No changes were needed to decay rates, the rate floor, or the Good Day formula — they held up under simulation.
+
+---
+
+## 13. Decisions Log
+
+Running record of locked decisions, so we don't relitigate settled ground.
+
+- **Pre-build audit (before coding began):** fixed a duplicate section number (two subsections both labeled "6.2" — Career Reframe renumbered to 6.3, Overflow renumbered to 6.4, all cross-references updated) and two stale headers (Sections 4 and 6 still read "numbers TBD" despite being fully locked). Resolved five previously-unspecified gaps: (1) micro-milestone XP bonus quantified at 10% of that level's total XP requirement; (2) decay-clock reset defined as any completed Task in an area (Habit, Main Task, or Chore) — not Habit-only, which had been an unlocked assumption baked into the Section 12 stress-test simulation; (3) re-engagement bonus only fires after a genuine lapse (decay had actually started, past the 3-day grace window), not for routine 1-2 day gaps; (4) day boundary defined as midnight-to-midnight in the player's local timezone; (5) Tutorial confirmed to gate purely on Good Day count with no XP threshold (deliberate — Tutorial's job is activation, not effort-gating), and the active Goal/Path confirmed to carry over automatically from Tutorial into Level 1 without requiring re-selection.
+
+- Capacity: hybrid — 5 per-area stats, rolled up to 1 global stat for level-gating.
+- Global rollup math: weighted average (not floor-rule, not flat average).
+- Area weights: shift by milestone, foundation-weighted early.
+- **Area weight curve (numbers locked):** continuous smootherstep curve across Levels 1-15, not flat milestone plateaus — avoids cliff-edges at milestone boundaries. Foundation (Physical/Mental) starts at 34% each, eases down to 22% each by Level 15. Career/Relationships/Exploration start at 10.7% each, ease up to 18.7% each. Foundation deliberately never fully equalizes — stays "first among equals" even at the Healthy Life cap, reflecting that physical/mental stability is load-bearing for the other three areas in a way that isn't symmetric. Steepest movement concentrated in Levels 5-11 (Momentum/Growth/early-Balance).
+- Decay: active, but grace-windowed (3 days), rate-capped, floor-protected, re-engagement-bonused. Lifetime totals immune to decay. No explicit "life happens" pause mechanic — implicit protection only (flagged as playtesting watch item). **Numbers locked:** 0.5%/day compound decay past grace window; 18% tier cap per neglect cycle (floor activates ~day 39 of neglect, ~6 weeks total); floor = previous milestone's Capacity entry level; re-engagement bonus = 1× area's normal daily XP on first day back.
+- Good Day → Level gate (numbers locked): hybrid — lifetime count AND rolling-window rate floor (50%), both required. Tutorial Level 0 ("Awakening", name TBD) = 7 GD, exists outside main level structure, delivers first reward in ~1.5 weeks. Level 1 reduced to 10 GD (from 20). Levels 2-15 follow smootherstep S-curve from 15 GD to 80 GD. Total 643 GD (~2.5 years at 70% rate). Micro-milestones at ~45% of each level's GD count — universal across all levels. Rolling window widens at milestone boundaries: 14 days (Stability) → 21 (Momentum) → 28 (Growth/Balance) → 35 (Healthy Life). Rate floor 50% throughout. First month delivers 3 reward moments in ~3 weeks.
+- Overflow XP (numbers locked): geometric decay on Growth XP stream — opening rate 25% of normal, decay ratio r = 0.30 per successive unit. Formula: 0.25 × 0.30^(n-1) × normal XP. Growth XP ceiling: ~36% of a normal XP unit (geometric series hard cap). Mastery XP stream: flat 100% of normal, no decay — Mastery rewards can't speed up leveling so there's no grinding incentive to suppress. Grind becomes irrational before unit 3 (2.2% of normal).
+- Career: reframed from daily task count to weekly XP band (60-100% of weekly target), to match percentage-based Good Day model used elsewhere and avoid checklist-style daily pressure. Numbers locked: Level 15 target ~110 XP/week (3.5 Main Tasks + 1 Habit + 2 Chores/weekday, lighter weekends). Scales via smootherstep S-curve to Level 1 target of ~31 XP/week. 60% floor confirmed.
+- Task XP tiering (numbers locked): 4 tiers — Main Task (4.0×) / Habit (2.5×) / Chore (1.0×) / Side Quest (Bonus XP only, not a Good Day category). Habit is a distinct tier from Chore because its importance is earned through compounding via Good Days/Capacity, not per-instance size. Side Quests removed from Good Day calculation entirely — feed Mastery rewards and overflow instead, so exploration has a home without becoming a soft obligation.
+- Good Day % calculation: per-category (not pooled XP sum), combined as Habit (40%) + Main Task (40%) + Chore (20%). 40/40 symmetry is deliberate — encodes "effort and sustainable living matter equally" as a mechanical reality. Good Day threshold confirmed at 80%.
+- Level curve: S-curve, not linear. Slow ramp (1-3) → steep ramp (4-9) → flattening (10-15).
+- **Growth Phase stress test (Section 11 → now Section 12):** simulated 28-day playthrough validated decay, rolling-window rate floor, and Good Day formula all work as designed. Found and fixed one real gap: Daily XP Cap (Section 7.3) was a blended total across all 5 areas with no per-area split. **Fix locked:** per-area daily XP ceiling = Global Daily Cap × that area's current weight (Section 4.2). Confirmed as intended (not a bug): players focused on fewer active areas take longer to level — this honestly reflects lower current sustainable capacity, consistent with the core design question in Section 1.
+- **Mastery Phase (Section 9, numbers locked):** begins at Level 15, never ends. Runs on Mastery Points (MP) — separate currency, 8 MP/Good Day baseline (~2,044 MP/year at 70% rate), plus Overflow XP and Bonus XP (already routed here). MP earned per-area, not pooled. 5 Mastery Tiers per area (Committed → Legendary), escalating cost from 500 to 5,250 MP, ~13.6 years to Legendary at focused effort — deliberately decades-scale, matching genuine real-world mastery timescales. Balance Streak uses the same rolling-window/rate-floor model as the Good Day gate (60-day window, 50% floor) — classic fragile streak-reset mechanics were explicitly rejected as reintroducing the exact "punish any imperfection" anti-pattern this game exists to avoid. Titles carry small mechanical perks (decay-resilience only — wider grace window, slower decay rate, area-locked, capped at 20% reduction even at Legendary) — deliberately scoped away from XP/overflow boosts to avoid becoming an optimization target for Goal selection; this was a considered trade-off, not an oversight (confirmed directly with Gus, who wanted perks to feel materially rewarding despite the risk).
+- Level 1 accessibility constraint (sleep + one task) treated as a hard constraint on all downstream curve math, not flavor text.
+- **Goal → Milestone → Task structure (new, Section 8):** three-layer player-authored structure — Goal (primary Area + optional secondary Areas) → 2-5 Milestones → Tasks (tagged by tier). No prescribed content; player defines their own life goals. Main Task tier (4.0×) now requires linkage to an active Milestone under an active Goal — closes the previously-unenforced "moves a goal forward" definition. Habits don't require goal-linkage (many are foundational, not goal-shaped). Every player must have ≥1 active Goal, but this can be satisfied by selecting a pre-built Path template rather than authoring from scratch — reconciles the requirement with Level 1 accessibility (blank-page authoring is a real barrier for someone rebuilding/depressed). Path templates are cross-cutting (not per-Area) — built around common real-life goals (e.g. "Healthy Lifestyle," "Bodybuilding," "Career Climber") since real goals rarely respect Area boundaries. A "Just Stabilize" Path exists specifically for Level 1 accessibility. Goals can be paused/abandoned without penalty — consistent with the non-punitive decay philosophy.
+- **XP-per-level (numbers locked):** anchored from Career's Level 15 weekly target (110 XP) divided by its area weight (18.7%), giving ~84 XP/day at L15 and ~41 XP/day at L1. XP-per-level scales via smootherstep from 450 (L1) to 7,650 (L15). Total 53,100 XP across the full Growth Phase. Levels 14-15 deliberately share the same XP and Good Day requirement — the top of Healthy Life is about sustaining, not adding.
+- **Capacity-per-level (numbers locked):** 0-100 scale per area, smootherstep S-curve from 10 (L1) to 100 (L14-15). All five areas share the same raw Capacity value at each level — Foundation vs. Other area weighting is applied only at the Global Capacity rollup stage (Section 4.2), not baked into different raw values. Decay floor = Capacity × 0.82 (the 18% tier cap from Section 4.3) at every level.
+
