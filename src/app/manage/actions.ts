@@ -68,15 +68,25 @@ export async function createTask(formData: FormData) {
   const tier = String(formData.get("tier"));
   const areaId = String(formData.get("areaId"));
   const recurrence = String(formData.get("recurrence"));
-  const milestoneId = formData.get("milestoneId");
+  const milestoneIdRaw = formData.get("milestoneId");
+  const milestoneId = milestoneIdRaw ? String(milestoneIdRaw) : "";
 
   if (!title || !areaId) return;
   if (tier === "main_task" && !milestoneId) return;
 
+  // Main Tasks require a Milestone (enforced again by the DB trigger).
+  // Habits may optionally link to one; Chores never do (CLAUDE.md 8.2).
+  let resolvedMilestoneId: string | null = null;
+  if (tier === "main_task") {
+    resolvedMilestoneId = milestoneId;
+  } else if (tier === "habit" && milestoneId) {
+    resolvedMilestoneId = milestoneId;
+  }
+
   const supabase = await createClient();
   await supabase.from("tasks").insert({
     player_id: playerId,
-    milestone_id: tier === "main_task" ? String(milestoneId) : null,
+    milestone_id: resolvedMilestoneId,
     area_id: areaId,
     tier,
     title,

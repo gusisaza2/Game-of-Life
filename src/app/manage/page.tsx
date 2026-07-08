@@ -23,31 +23,43 @@ export default async function ManagePage() {
     );
   }
 
-  const [{ data: areas }, { data: goals }, { data: tasks }, { data: milestoneRows }] =
-    await Promise.all([
-      supabase.from("areas").select("id, name").order("name"),
-      supabase
-        .from("goals")
-        .select("id, title, status, area_id, milestones(id, title, order_index, status)")
-        .eq("player_id", player.id)
-        .order("created_at"),
-      supabase
-        .from("tasks")
-        .select("id, title, tier, area_id, recurrence, is_active, milestone_id")
-        .eq("player_id", player.id)
-        .order("title"),
-      supabase
-        .from("milestones")
-        .select("id, title, goals!inner(title, status)")
-        .eq("status", "active")
-        .eq("goals.status", "active"),
-    ]);
+  const [
+    { data: areas },
+    { data: goals },
+    { data: tasks },
+    { data: milestoneRows },
+    { data: allMilestoneRows },
+  ] = await Promise.all([
+    supabase.from("areas").select("id, name").order("name"),
+    supabase
+      .from("goals")
+      .select("id, title, status, area_id, milestones(id, title, order_index, status)")
+      .eq("player_id", player.id)
+      .order("created_at"),
+    supabase
+      .from("tasks")
+      .select("id, title, tier, area_id, recurrence, is_active, milestone_id")
+      .eq("player_id", player.id)
+      .order("title"),
+    supabase
+      .from("milestones")
+      .select("id, title, goals!inner(title, status)")
+      .eq("status", "active")
+      .eq("goals.status", "active"),
+    supabase.from("milestones").select("id, title, goals(title)"),
+  ]);
 
   const areasById = new Map((areas ?? []).map((area) => [area.id, area.name]));
   const milestoneOptions = (milestoneRows ?? []).map((m) => ({
     id: m.id,
     label: `${(m.goals as unknown as { title: string }).title} → ${m.title}`,
   }));
+  const milestoneLabelsById = new Map(
+    (allMilestoneRows ?? []).map((m) => [
+      m.id,
+      `${(m.goals as unknown as { title: string }).title} → ${m.title}`,
+    ]),
+  );
 
   const tasksByTier = {
     habit: (tasks ?? []).filter((t) => t.tier === "habit"),
@@ -133,7 +145,11 @@ export default async function ManagePage() {
                   <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
                     {task.title}{" "}
                     <span className="text-xs text-foreground/40">
-                      ({areasById.get(task.area_id)})
+                      ({areasById.get(task.area_id)}
+                      {task.milestone_id && milestoneLabelsById.has(task.milestone_id)
+                        ? ` · ${milestoneLabelsById.get(task.milestone_id)}`
+                        : ""}
+                      )
                     </span>
                   </span>
                   <form action={setTaskActive}>

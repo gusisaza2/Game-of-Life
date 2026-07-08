@@ -65,13 +65,15 @@ export function TaskForm({
         </select>
       </div>
 
-      {tier === "main_task" && (
+      {(tier === "main_task" || tier === "habit") && (
         <select
           name="milestoneId"
-          required
+          required={tier === "main_task"}
           className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
         >
-          <option value="">Link to a Milestone…</option>
+          <option value="">
+            {tier === "main_task" ? "Link to a Milestone…" : "No linked Goal (standalone habit)"}
+          </option>
           {milestoneOptions.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
