@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getDateString, getTodayDateString, getYesterdayDateString } from "@/lib/today";
-import { getOrComputeGoodDay } from "@/lib/good-day-service";
+import { getDateString, getTodayDateString } from "@/lib/today";
+import { getYesterdayGoodDay } from "@/lib/good-day-service";
 import { refreshAllAreaCapacities } from "@/lib/capacity-service";
 import { getLevelProgress } from "@/lib/level-progress";
 import { milestoneNameForLevel } from "@/lib/milestones";
@@ -10,7 +10,6 @@ import { LevelProgress } from "@/components/LevelProgress";
 export default async function TodayPage() {
   const supabase = await createClient();
   const today = getTodayDateString();
-  const yesterday = getYesterdayDateString();
 
   const { data: player } = await supabase.from("players").select("*").single();
 
@@ -23,12 +22,7 @@ export default async function TodayPage() {
   }
 
   const earliestDate = getDateString(new Date(player.created_at));
-  const yesterdayGoodDay = await getOrComputeGoodDay(
-    player.id,
-    yesterday,
-    today,
-    earliestDate,
-  );
+  const yesterdayGoodDay = await getYesterdayGoodDay(player.id, today, earliestDate);
 
   // Decay has no cron yet — recompute on-read (CLAUDE.md build order).
   await refreshAllAreaCapacities(player.id, player.current_level, today, earliestDate);

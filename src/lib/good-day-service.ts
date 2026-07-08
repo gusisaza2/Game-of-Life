@@ -5,6 +5,7 @@ import {
   isGoodDay,
 } from "@/lib/good-day";
 import { checkAndApplyLevelUp } from "@/lib/level-up-service";
+import { getDateString } from "@/lib/today";
 
 type Tier = "habit" | "main_task" | "chore";
 
@@ -17,16 +18,32 @@ export type GoodDayResult = {
   isGoodDay: boolean;
 };
 
+function addDays(dateString: string, days: number): string {
+  const date = new Date(`${dateString}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return getDateString(date);
+}
+
+// Date strings are zero-padded ISO (YYYY-MM-DD), so lexicographic order
+// matches calendar order.
+function dateRange(startDate: string, endDateInclusive: string): string[] {
+  const dates: string[] = [];
+  for (let current = startDate; current <= endDateInclusive; current = addDays(current, 1)) {
+    dates.push(current);
+  }
+  return dates;
+}
+
 // Finalizes and persists the Good Day % for a single past day. Never
 // computes "today" — Good Day status is only revealed once a day is over
-// (CLAUDE.md UX principle: no live-ticking Good Day meter).
-export async function getOrComputeGoodDay(
+// (CLAUDE.md UX principle: no live-ticking Good Day meter). Idempotent: an
+// already-finalized day is returned from its cached row, not recomputed.
+async function getOrComputeGoodDayForDate(
   playerId: string,
   date: string,
   todayDateString: string,
-  earliestDateString: string,
 ): Promise<GoodDayResult | null> {
-  if (date >= todayDateString || date < earliestDateString) return null;
+  if (date >= todayDateString) return null;
 
   const supabase = await createClient();
 
@@ -115,4 +132,57 @@ export async function getOrComputeGoodDay(
     goodDayPct,
     isGoodDay: goodDay,
   };
+}
+
+// Finalizes every day from the last-finalized day (exclusive) — or the
+// player's creation date, if none is finalized yet — through yesterday,
+// inclusive. Without this, a player who skips opening the app for several
+// days would never have those in-between days finalized: lifetime Good Day
+// count would silently undercount, and the rolling-window rate used by the
+// Level-up gate would be skewed by phantom gaps.
+export async function backfillGoodDays(
+  playerId: string,
+  todayDateString: string,
+  earliestDateString: string,
+): Promise<GoodDayResult[]> {
+  const yesterday = addDays(todayDateString, -1);
+  if (yesterday < earliestDateString) return [];
+
+  const supabase = await createClient();
+  const { data: lastFinalized } = await supabase
+    .from("daily_good_days")
+    .select("date")
+    .eq("player_id", playerId)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const startDate = lastFinalized ? addDays(lastFinalized.date, 1) : earliestDateString;
+
+  const results: GoodDayResult[] = [];
+  for (const date of dateRange(startDate, yesterday)) {
+    // Sequential, not parallel: each day's lifetime-count increment and
+    // level-up check must see the previous day's effects.
+    const result = await getOrComputeGoodDayForDate(playerId, date, todayDateString);
+    if (result) results.push(result);
+  }
+  return results;
+}
+
+// Convenience for the Today view: backfills any unfinalized backlog, then
+// returns yesterday's finalized status (from the backfill if it was just
+// computed, or from its cached row if it already was).
+export async function getYesterdayGoodDay(
+  playerId: string,
+  todayDateString: string,
+  earliestDateString: string,
+): Promise<GoodDayResult | null> {
+  const yesterday = addDays(todayDateString, -1);
+  if (yesterday < earliestDateString) return null;
+
+  const backfilled = await backfillGoodDays(playerId, todayDateString, earliestDateString);
+  const fromBackfill = backfilled.find((result) => result.date === yesterday);
+  if (fromBackfill) return fromBackfill;
+
+  return getOrComputeGoodDayForDate(playerId, yesterday, todayDateString);
 }
