@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getDateString, getTodayDateString } from "@/lib/today";
 import { getYesterdayGoodDay } from "@/lib/good-day-service";
@@ -56,8 +57,11 @@ export default async function TodayPage() {
 
   return (
     <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
-      <header className="w-full max-w-md">
+      <header className="w-full max-w-md flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">Today</h1>
+        <Link href="/manage" className="text-sm text-foreground/60 hover:text-foreground">
+          Manage →
+        </Link>
       </header>
 
       <LevelProgress
