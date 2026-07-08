@@ -3,6 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+// Main Tasks require a Milestone (enforced again by the DB trigger).
+// Habits may optionally link to one; Chores never do (CLAUDE.md 8.2).
+function resolveMilestoneId(tier: string, milestoneId: string): string | null {
+  if (tier === "main_task") return milestoneId || null;
+  if (tier === "habit") return milestoneId || null;
+  return null;
+}
+
 export async function createGoal(formData: FormData) {
   const playerId = String(formData.get("playerId"));
   const title = String(formData.get("title") ?? "").trim();
@@ -74,25 +82,44 @@ export async function createTask(formData: FormData) {
   if (!title || !areaId) return;
   if (tier === "main_task" && !milestoneId) return;
 
-  // Main Tasks require a Milestone (enforced again by the DB trigger).
-  // Habits may optionally link to one; Chores never do (CLAUDE.md 8.2).
-  let resolvedMilestoneId: string | null = null;
-  if (tier === "main_task") {
-    resolvedMilestoneId = milestoneId;
-  } else if (tier === "habit" && milestoneId) {
-    resolvedMilestoneId = milestoneId;
-  }
-
   const supabase = await createClient();
   await supabase.from("tasks").insert({
     player_id: playerId,
-    milestone_id: resolvedMilestoneId,
+    milestone_id: resolveMilestoneId(tier, milestoneId),
     area_id: areaId,
     tier,
     title,
     recurrence,
     is_active: true,
   });
+
+  revalidatePath("/manage");
+  revalidatePath("/");
+}
+
+export async function updateTask(formData: FormData) {
+  const taskId = String(formData.get("taskId"));
+  const title = String(formData.get("title") ?? "").trim();
+  const tier = String(formData.get("tier"));
+  const areaId = String(formData.get("areaId"));
+  const recurrence = String(formData.get("recurrence"));
+  const milestoneIdRaw = formData.get("milestoneId");
+  const milestoneId = milestoneIdRaw ? String(milestoneIdRaw) : "";
+
+  if (!title || !areaId) return;
+  if (tier === "main_task" && !milestoneId) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("tasks")
+    .update({
+      title,
+      tier,
+      area_id: areaId,
+      recurrence,
+      milestone_id: resolveMilestoneId(tier, milestoneId),
+    })
+    .eq("id", taskId);
 
   revalidatePath("/manage");
   revalidatePath("/");

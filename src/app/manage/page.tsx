@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { GoalForm } from "@/components/manage/GoalForm";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
 import { TaskForm } from "@/components/manage/TaskForm";
-import { setGoalStatus, setTaskActive } from "./actions";
+import { TaskRow } from "@/components/manage/TaskRow";
+import { setGoalStatus } from "./actions";
 
 const TIER_LABELS: Record<string, string> = {
   habit: "Habit",
@@ -137,30 +138,32 @@ export default async function ManagePage() {
           <div key={tier} className="flex flex-col gap-2">
             <h3 className="text-xs text-foreground/60">{TIER_LABELS[tier]}</h3>
             <ul className="flex flex-col gap-1">
-              {tasksByTier[tier].map((task) => (
-                <li
-                  key={task.id}
-                  className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm"
-                >
-                  <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
-                    {task.title}{" "}
-                    <span className="text-xs text-foreground/40">
-                      ({areasById.get(task.area_id)}
-                      {task.milestone_id && milestoneLabelsById.has(task.milestone_id)
-                        ? ` · ${milestoneLabelsById.get(task.milestone_id)}`
-                        : ""}
-                      )
-                    </span>
-                  </span>
-                  <form action={setTaskActive}>
-                    <input type="hidden" name="taskId" value={task.id} />
-                    <input type="hidden" name="isActive" value={(!task.is_active).toString()} />
-                    <button className="text-xs text-foreground/60 hover:text-foreground">
-                      {task.is_active ? "Deactivate" : "Reactivate"}
-                    </button>
-                  </form>
-                </li>
-              ))}
+              {tasksByTier[tier].map((task) => {
+                // Guarantee the task's current link survives into the edit
+                // form's options, even if its Goal is no longer active.
+                const rowMilestoneOptions =
+                  task.milestone_id && !milestoneOptions.some((m) => m.id === task.milestone_id)
+                    ? [
+                        ...milestoneOptions,
+                        {
+                          id: task.milestone_id,
+                          label: milestoneLabelsById.get(task.milestone_id) ?? "Linked milestone",
+                        },
+                      ]
+                    : milestoneOptions;
+
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    areas={areas ?? []}
+                    milestoneOptions={rowMilestoneOptions}
+                    milestoneLabel={
+                      task.milestone_id ? milestoneLabelsById.get(task.milestone_id) ?? null : null
+                    }
+                  />
+                );
+              })}
             </ul>
           </div>
         ))}
