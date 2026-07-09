@@ -42,6 +42,11 @@ export type NivelProgress = {
   totalNiveles: number;
   goodDaysInChapter: number;
   goodDaysNeededForChapter: number;
+  // Cumulative Good-Days-within-chapter needed for the *next* Nivel; null
+  // if currentNivel is already the last one for this Chapter (the player
+  // is just waiting on the Chapter's other gate conditions — XP, rate —
+  // to advance, not on more Good Days for a Nivel).
+  nextNivelThreshold: number | null;
 };
 
 // Returns null for a Chapter outside MVP scope (nothing to compute yet).
@@ -56,11 +61,13 @@ export function getNivelProgress(
   const goodDaysInChapter = Math.max(0, lifetimeGoodDayCount - entryThreshold);
   const thresholds = nivelThresholds(goodDaysTotal);
   const currentNivel = thresholds.filter((t) => goodDaysInChapter >= t).length;
+  const nextNivelThreshold = currentNivel < thresholds.length ? thresholds[currentNivel] : null;
 
   return {
     currentNivel,
     totalNiveles: thresholds.length,
     goodDaysInChapter,
     goodDaysNeededForChapter: goodDaysTotal,
+    nextNivelThreshold,
   };
 }

@@ -1,4 +1,5 @@
 import type { ProgressItem } from "@/lib/level-progress";
+import type { NivelProgress } from "@/lib/nivel";
 
 function ProgressBar({ label, progress }: { label: string; progress: ProgressItem }) {
   const pct = Math.min(100, (progress.current / progress.threshold) * 100);
@@ -23,16 +24,49 @@ function ProgressBar({ label, progress }: { label: string; progress: ProgressIte
   );
 }
 
+function NivelBar({ nivel }: { nivel: NivelProgress }) {
+  const pct =
+    nivel.nextNivelThreshold === null
+      ? 100
+      : Math.min(100, (nivel.goodDaysInChapter / nivel.nextNivelThreshold) * 100);
+  const remaining =
+    nivel.nextNivelThreshold === null ? null : nivel.nextNivelThreshold - nivel.goodDaysInChapter;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between text-xs text-foreground/60">
+        <span>Nivel</span>
+        <span>
+          {nivel.currentNivel} / {nivel.totalNiveles}
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-foreground/10">
+        <div
+          className="h-full rounded-full bg-foreground/70"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-foreground/50">
+        {remaining === null
+          ? "Último Nivel de este Capítulo"
+          : `${remaining} Good Day${remaining === 1 ? "" : "s"} para el próximo Nivel`}
+      </p>
+    </div>
+  );
+}
+
 export function LevelProgress({
   levelLabel,
   milestoneName,
   xp,
   goodDays,
+  nivel,
 }: {
   levelLabel: string;
   milestoneName: string | null;
   xp: ProgressItem | null;
   goodDays: ProgressItem | null;
+  nivel: NivelProgress | null;
 }) {
   return (
     <div className="w-full max-w-md flex flex-col gap-3">
@@ -42,6 +76,7 @@ export function LevelProgress({
       </p>
       {xp && <ProgressBar label="XP" progress={xp} />}
       {goodDays && <ProgressBar label="Good Days" progress={goodDays} />}
+      {nivel && <NivelBar nivel={nivel} />}
     </div>
   );
 }

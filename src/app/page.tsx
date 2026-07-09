@@ -4,6 +4,7 @@ import { getDateString, getTodayDateString } from "@/lib/today";
 import { getYesterdayGoodDay } from "@/lib/good-day-service";
 import { refreshAllAreaCapacities } from "@/lib/capacity-service";
 import { getLevelProgress } from "@/lib/level-progress";
+import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
@@ -61,6 +62,7 @@ export default async function TodayPage() {
   const levelLabel = currentLevel === 0 ? "Tutorial" : `Chapter ${currentLevel}`;
   const milestoneName = milestoneNameForLevel(currentLevel);
   const progress = getLevelProgress(currentLevel, cumulativeXp, lifetimeGoodDayCount);
+  const nivelProgress = getNivelProgress(currentLevel, lifetimeGoodDayCount);
 
   return (
     <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
@@ -82,6 +84,7 @@ export default async function TodayPage() {
         milestoneName={milestoneName}
         xp={progress.xp}
         goodDays={progress.goodDays}
+        nivel={nivelProgress}
       />
 
       {yesterdayGoodDay && (
