@@ -25,7 +25,7 @@ Full design rationale lives in `docs/game_design.md` (the complete design doc �
 Do NOT implement the full 15-chapter system, Mastery Phase, or all 5 Main Areas' full weight curves in the first pass. Build in this order:
 
 **Phase 1 (current target):**
-- Tutorial ("Awakening") + Chapters 1, 2, 3 only (Milestone: Stability)
+- Chapters 1, 2, 3 only (Milestone: Stability). Tutorial ("Awakening") is retired — players start at Chapter 1 (Section 7, revised).
 - ONE active Path per player at a time (player picks or authors custom — see Goal structure below)
 - Core loop: log a Task → see today's Good Day % → accumulate Good Days + XP → check chapter-up gate
 - Simplified decay is OK for v1 (exact formula below, but don't over-engineer the UI around it yet)
@@ -50,8 +50,8 @@ Area (fixed, seed data — 5 rows, never player-editable)
   is_foundation: boolean       → true for Physical Health + Mental Health
 
 Player (single row for MVP — no multi-user yet)
-  id, current_level (0 = Tutorial, 1, 2, 3...), tutorial_complete: boolean
-  lifetime_good_day_count, cumulative_xp
+  id, current_level (1, 2, 3... — Tutorial/level 0 retired, players start at 1)
+  lifetime_good_day_count, cumulative_xp, last_nivel_reached
   created_at
 
 AreaCapacity (one row per Player × Area)
@@ -167,39 +167,47 @@ if (days_since_activity_before_this_completion > GRACE_DAYS):
 
 **Day boundary:** a "day" for all date-diffing above (decay, Good Day rollover, rolling windows) is midnight-to-midnight in the player's local timezone. Simplest reasonable default for a single-user app.
 
-### 7. Good Day → Level-up gate (Levels 1-3 windows)
-```
-Tutorial/Level 1/2/3: rolling_window = 14 days, rate_floor = 0.50
+### 7. Good Day → Chapter-up gate (REVISED this session — Good-Day-only, no Tutorial)
 
-Level-up requires ALL of:
-  1. cumulative_xp >= xp_threshold_for_level   (Tutorial: n/a, L1: 450, L2: 1150 cumulative, L3: 1850 cumulative)
-  2. lifetime_good_day_count >= gd_threshold   (Tutorial: 7, L1: 17 cumulative, L2: 32 cumulative, L3: 47 cumulative)
-  3. (good_days_in_last_14_days / 14) >= 0.50
-```
+**Tutorial is retired.** Players now start directly at Chapter 1 — its two original justifications (no XP-gating, fast first reward) are already true of Chapter 1 under this revised design, so it no longer did anything Chapter 1 doesn't. Do not reintroduce a Level/Chapter 0.
 
-### 8. Nested Nivel system (NEW this session — replaces micro-milestones)
-
-Within each Chapter, a finer-grained "Nivel" fires on an exponential curve based on cumulative Good Days *within the current Chapter only* (resets to 0 when a new Chapter starts):
+**The Chapter-up gate no longer checks XP at all** — XP now drives Nivel instead (Section 8, revised below). This was a deliberate, explicitly-confirmed design change: the original hybrid gate existed to prevent "front-loading" (leveling via Good Days alone, without real effort), but Good Day % itself already requires meaningful Habit + Main Task completion to clear 80% (Section 2 formula) — a pure-Chore day caps at 20%. That existing protection was judged sufficient without a second, separate XP gate.
 
 ```
-G = total Good Days required for the current Chapter (Tutorial: 7, Ch.1: 10, Ch.2: 15, Ch.3: 15)
-N = number of Niveles in this Chapter = max(4, round(sqrt(G) * 1.6))
+Chapter 1/2/3: rolling_window = 14 days, rate_floor = 0.50
 
-Cumulative GD needed for Nivel n (of N) = round(G * (n/N)^1.4)
-  — the final Nivel always equals G exactly (coincides with Chapter completion)
-
-Example thresholds:
-  Tutorial (G=7, N=4):  Nivel-ups at 1, 3, 5, 7 cumulative Good Days
-  Chapter 1 (G=10, N=5): Nivel-ups at 1, 3, 5, 7, 10
-  Chapter 2 (G=15, N=6): Nivel-ups at 1, 3, 6, 9, 12, 15
-  Chapter 3 (G=15, N=6): Nivel-ups at 1, 3, 6, 9, 12, 15
+Chapter-up requires ALL of:
+  1. lifetime_good_day_count >= gd_threshold   (Ch.1: 10 cumulative, Ch.2: 25 cumulative, Ch.3: 40 cumulative)
+  2. (good_days_in_last_14_days / 14) >= 0.50
 ```
 
-**What a Nivel-up does:** visual-only reward (currently a placeholder toast, see MVP scope note above — Ship rendering comes later). **No separate XP is awarded** — the underlying Good Day already granted XP through normal task completion. Track a `last_nivel_reached` value (new field, additive — add to `Player` or a new per-chapter progress table, whichever is less invasive to the existing schema) so the app can detect *when* a new Nivel threshold is crossed and fire the celebration moment exactly once, not on every subsequent page load.
+(Cumulative thresholds recomputed without the old Tutorial's 7 GD prefix: Chapter 1's own requirement is 10, Chapter 2 adds 15 more → 25 cumulative, Chapter 3 adds 15 more → 40 cumulative.)
 
-**Tutorial has NO XP threshold — Good Days only.** This is deliberate: Tutorial's job is proving the core loop feels good (activation), not effort-gating. Don't add an XP requirement to Tutorial graduation logic.
+### 8. Nested Nivel system (REVISED this session — now XP-driven, not Good-Day-driven)
 
-**Goal/Path continuity:** the Goal/Path a player selects during Tutorial carries over automatically into Chapter 1 — never force a re-selection at the Tutorial→Chapter 1 transition.
+Within each Chapter, a finer-grained "Nivel" fires on an exponential curve based on cumulative **XP** *within the current Chapter only* (resets to 0 when a new Chapter starts). This was changed from Good-Day-driven so Nivel tracks the Effort axis while the Chapter gate tracks the Balance axis — two independent, legible motivators (Section 2: "Effort without balance does not level the player. Balance without effort does not level the player").
+
+```
+G = XP required for the current Chapter (Ch.1: 450, Ch.2: 700, Ch.3: 700 — the existing XP-per-level table)
+N = number of Niveles in this Chapter = max(4, round(sqrt(G) * 0.24))
+  — coefficient recalibrated for XP-sized G (450-700+), NOT the old Good-Day coefficient (1.6),
+    which would yield absurd results (e.g. 34 Niveles) at XP magnitudes
+
+Cumulative XP needed for Nivel n (of N) = round(G * (n/N)^1.4)
+
+Actual thresholds (computed, not hand-picked):
+  Chapter 1 (G=450, N=5): Nivel-ups at 47, 125, 220, 329, 450 cumulative XP within the chapter
+  Chapter 2 (G=700, N=6): Nivel-ups at 57, 150, 265, 397, 542, 700
+  Chapter 3 (G=700, N=6): same shape as Chapter 2
+```
+
+**Nivel is checked in real time, at the moment XP is awarded (task completion), not deferred to the next-day Good Day backfill** — unlike the old Good-Day-driven version, XP is available immediately, so there's no reason to wait.
+
+**A player can max out Nivel before the Chapter's Good-Day gate clears (or vice versa) — this is intentional, not a bug.** The two axes are independent by design; reaching max Nivel while Good Days lag communicates "you've put in the effort, now live it consistently" exactly per Section 2's stated philosophy. Both progress bars are visible together, so the player always sees why they're waiting.
+
+**What a Nivel-up does:** visual-only reward (currently a placeholder toast, see MVP scope note above — Ship rendering comes later). **No separate XP is awarded** — the underlying task completion already granted the XP. Track a `last_nivel_reached` value on `Player` (already implemented) so the app can detect *when* a new Nivel threshold is crossed and fire the celebration moment exactly once. Reset it to 0 whenever the Chapter advances.
+
+**Goal/Path continuity:** unaffected by the Tutorial's removal — a player's active Goal/Path simply continues across Chapter transitions as before.
 
 ### 9. Task Activation Delay (NEW this session)
 
@@ -213,7 +221,7 @@ else:
     completing it → awards normal tier XP as usual (formula #1)
 ```
 
-**Exemption:** tasks seeded from a Path template (e.g. "Just Stabilize") are exempt — mark them with a `source = 'path_template'` flag (already in the Task/Goal data model) and skip the activation delay check for those. This preserves full XP from Day 1 for a brand-new Tutorial player.
+**Exemption:** tasks seeded from a Path template (e.g. "Just Stabilize") are exempt — mark them with a `source = 'path_template'` flag (already in the Task/Goal data model) and skip the activation delay check for those. This preserves full XP from Day 1 for a brand-new Chapter 1 player.
 
 **New seeded system Habit — "Planned tomorrow":** always available to every player, no `milestone_id` required, standard Habit-tier XP (2.5×) when completed. Not player-created — seed it alongside the 5 Areas and Just Stabilize Path in the database seed step.
 
@@ -225,7 +233,7 @@ else:
 2. **Show XP live — but NOT Good Day %.** These are governed by different rules, don't conflate them:
    - **Immediate per-action feedback (NEW this session):** every completed Task shows an instant "+X XP" moment (using the tier values from formula #1). A running **"XP today" counter is also shown live**, updating as the day progresses.
    - **Good Day % stays hidden, revealed only at day-rollover.** Never show the live percentage or a progress bar ticking toward the 80% threshold. Reasoning: Good Day % has a specific pass/fail cliff (80%) that invites gaming if visible live ("just need a bit more to hit 80%"). XP has no such cliff — it simply accumulates with nothing to optimize *toward* — so showing XP live doesn't reintroduce that problem. Don't generalize "hide it live" from Good Day % to XP; they're different cases for a specific, stated reason.
-3. **Every player must have ≥1 active Goal.** For Level 1/Tutorial, offer the "Just Stabilize" Path as a one-tap option — never force blank-page goal authoring on a new player (this is a deliberate accessibility decision, see design doc Section 8.3).
+3. **Every player must have ≥1 active Goal.** For Chapter 1, offer the "Just Stabilize" Path as a one-tap option — never force blank-page goal authoring on a new player (this is a deliberate accessibility decision, see design doc Section 8.3).
 4. **The "Just Stabilize" Path (MVP's default/starter Path) — seed this as real data:**
    - Area: Physical Health (primary) + Mental Health (secondary)
    - Milestone 1: "Maintain sleep routine for 2 weeks"

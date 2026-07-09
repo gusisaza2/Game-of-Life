@@ -24,13 +24,13 @@ export default async function TodayPage() {
   }
 
   const earliestDate = getDateString(new Date(player.created_at));
-  const {
-    goodDay: yesterdayGoodDay,
-    nivelUp,
-    player: freshPlayerState,
-  } = await getYesterdayGoodDay(player.id, today, earliestDate);
-  // The backfill above may have just changed the Chapter, XP gate progress,
-  // or Nivel — use its returned state rather than the `player` fetched
+  const { goodDay: yesterdayGoodDay, player: freshPlayerState } = await getYesterdayGoodDay(
+    player.id,
+    today,
+    earliestDate,
+  );
+  // The backfill above may have just changed the Chapter or Good Day
+  // progress — use its returned state rather than the `player` fetched
   // above, which is now stale.
   const currentLevel = freshPlayerState?.current_level ?? player.current_level;
   const cumulativeXp = freshPlayerState?.cumulative_xp ?? Number(player.cumulative_xp);
@@ -57,16 +57,16 @@ export default async function TodayPage() {
   const completedIds = new Set((logs ?? []).map((log) => log.task_id));
   // Live "XP today" — every completed task's contribution, Growth or Bonus
   // alike (design doc Section 2.1: immediate feedback, not the same thing
-  // as cumulative_xp, which only counts Growth XP toward the gate).
+  // as cumulative_xp, which only counts Growth XP toward Nivel).
   const xpToday = (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0);
   const habits = (tasks ?? []).filter((t) => t.tier === "habit");
   const mainTasks = (tasks ?? []).filter((t) => t.tier === "main_task");
   const chores = (tasks ?? []).filter((t) => t.tier === "chore");
 
-  const levelLabel = currentLevel === 0 ? "Tutorial" : `Chapter ${currentLevel}`;
+  const levelLabel = `Chapter ${currentLevel}`;
   const milestoneName = milestoneNameForLevel(currentLevel);
-  const progress = getLevelProgress(currentLevel, cumulativeXp, lifetimeGoodDayCount);
-  const nivelProgress = getNivelProgress(currentLevel, lifetimeGoodDayCount);
+  const progress = getLevelProgress(currentLevel, lifetimeGoodDayCount);
+  const nivelProgress = getNivelProgress(currentLevel, cumulativeXp);
 
   return (
     <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
@@ -82,16 +82,9 @@ export default async function TodayPage() {
         </p>
       </div>
 
-      {nivelUp && (
-        <div className="w-full max-w-md rounded-lg border border-foreground/20 bg-foreground/5 px-4 py-3 text-center text-sm font-medium">
-          Nivel up! {nivelUp.nivelReached} / {nivelUp.totalNiveles}
-        </div>
-      )}
-
       <LevelProgress
         levelLabel={levelLabel}
         milestoneName={milestoneName}
-        xp={progress.xp}
         goodDays={progress.goodDays}
         nivel={nivelProgress}
       />

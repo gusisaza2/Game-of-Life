@@ -131,7 +131,9 @@ Neglected areas **actively decay** — but gently, and with hard protections:
 
 ---
 
-## 5. Good Day → Level Gate (Locked, including numbers)
+## 5. Good Day → Level Gate (Superseded — see Section 7.5)
+
+> ⚠️ **This section describes the original design and is kept as a historical record.** Two things changed in a later session (Section 7.5 has the current, locked spec): (1) the gate is now **Good-Day-only** — the "Total XP threshold" condition below was dropped; XP now drives the Nivel system instead. (2) **Tutorial/Level 0 is retired** — players start directly at Chapter 1. Section 5.1 below (Tutorial) no longer applies. Sections 5.2-5.4's specific numbers (GD tables, rolling windows) are superseded by Section 7.5's revised cumulative thresholds, though the underlying rolling-window/rate-floor *mechanism* they describe is unchanged.
 
 A level-up requires clearing **both**:
 
@@ -142,7 +144,7 @@ A level-up requires clearing **both**:
 
 The rate floor prevents **front-loading**: grinding Good Days hard in one period then coasting on a lifetime count while living unbalanced recently. Both numbers must be true *right now*, not just *ever*.
 
-### 5.1 Tutorial Level 0 — "Awakening" (New — retention fix)
+### 5.1 Tutorial Level 0 — "Awakening" (Retired — see Section 7.5)
 
 Exists *outside* the normal level structure. Its sole purpose: let the player feel the game's core reward loop before they've invested 4+ weeks. Name TBD (placeholder: "Awakening").
 
@@ -340,18 +342,17 @@ Going above 100% of a daily/weekly target produces **diminishing-returns overflo
 
 ## 7. Level Structure & Milestones (Locked, including numbers)
 
-### 7.1 The Five Milestones (Locked)
+### 7.1 The Five Milestones (Revised — Tutorial/Level 0 retired, see Section 7.5)
 
 | Milestone | Name | Levels |
 |---|---|---|
-| 0 | Awakening (Tutorial) | Level 0 |
 | I | Stability | 1–3 |
 | II | Momentum | 4–6 |
 | III | Growth | 7–9 |
 | IV | Balance | 10–12 |
 | V | Healthy Life | 13–15 |
 
-Growth Phase soft-caps at Level 15 (end of Milestone V). Mastery Phase begins after, and does not end.
+Growth Phase soft-caps at Level 15 (end of Milestone V). Mastery Phase begins after, and does not end. Players start at Level 1 (Chapter 1) directly — there is no Level/Chapter 0.
 
 ### 7.2 Level 1 Definition (Locked)
 Represents a struggling or rebuilding player. A successful day at Level 1 = **maintaining sleep + completing one meaningful task.** Must remain genuinely accessible to someone dealing with depression or actively rebuilding their life — this is a hard design constraint on every number that follows, not just a narrative flavor note.
@@ -426,36 +427,45 @@ Capacity is measured on a **0–100 scale per area**. All five areas use the sam
 
 **Overflow XP and Capacity:** the Growth XP ceiling from overflow (Section 6.4, ~36% of a normal XP unit per day) is calculated against the player's *current per-area daily XP ceiling* (this section, not the blended global cap) — so overflow's absolute value scales with both Capacity and the specific area's weight, keeping it proportionally capped at every level and every area.
 
-### 7.5 Nested Nivel System — Terminology & Reward Cadence (Locked, including numbers)
+### 7.5 Nested Nivel System — Terminology & Reward Cadence (Locked, including numbers — REVISED in a later session, see below)
 
 **Terminology change:** what this document previously called "Level" (Tutorial, Level 1–15) is renamed **Capítulo/Chapter**. Every number already locked for Levels 1–15 — Good Day thresholds, XP thresholds, Capacity, area weights — carries over unchanged under the new name. Nothing about the underlying math changes; only the label.
 
-**Why this changed:** stress-testing the pacing (informal, conversational — not a coded simulation) surfaced a real problem: reaching the very first Capítulo (Tutorial → Level 1, ~10 days at a realistic Good Day rate) was too long a wait for a brand-new player's *first* reward moment, and later Capítulos (e.g. Milestone I, ~8 weeks total) had long visible stretches with no reward at all. The fix needed to preserve every already-validated number (Good Day counts, XP curve, Capacity curve) while adding a faster, finer reward cadence on top.
+**Why this changed (original motivation):** stress-testing the pacing (informal, conversational — not a coded simulation) surfaced a real problem: reaching the very first Capítulo (Tutorial → Level 1, ~10 days at a realistic Good Day rate) was too long a wait for a brand-new player's *first* reward moment, and later Capítulos (e.g. Milestone I, ~8 weeks total) had long visible stretches with no reward at all. The fix needed to preserve every already-validated number (Good Day counts, XP curve, Capacity curve) while adding a faster, finer reward cadence on top.
 
-**The new "Nivel" is a sub-unit inside each Capítulo, one layer finer than Good Days.** A Nivel fires when a player's *cumulative Good Days within the current Capítulo* crosses a threshold defined by an exponential curve:
+---
 
-> **Cumulative Good Days needed for Nivel n (of N total Niveles in this Capítulo) = round(G × (n/N)^1.4)**, where G = that Capítulo's total Good Day requirement. The final Nivel always coincides exactly with Capítulo completion.
+**REVISED (later session): Nivel is now XP-driven, not Good-Day-driven, and Tutorial is retired.** Two related decisions, made together and confirmed directly with Gus:
 
-**Number of Niveles per Capítulo** scales with that Capítulo's size, but sublinearly (not 1:1 with Good Days, which would make Nivel-ups feel routine/expected rather than earned):
+1. **Tutorial/Level 0 is retired.** Its two original justifications — no XP-gating during activation, and a fast first reward — are now both inherently true of Chapter 1 under the revised design below, so Tutorial no longer did anything Chapter 1 doesn't. Players start directly at Chapter 1.
 
-> **N (niveles in this Capítulo) = max(4, round(√G × 1.6))**
+2. **Nivel now tracks cumulative XP within the current Chapter, not cumulative Good Days.** The Chapter-up gate, in turn, drops its XP condition entirely and becomes Good-Day-only. This gives the two systems a clean conceptual split matching Section 2's own stated duality: **Nivel = the Effort axis (XP), Chapter = the Balance axis (Good Days)** — two independent, simultaneously-visible motivators instead of one system (Good Days) driving both a fast and a slow reward layer.
 
-**Example thresholds (cumulative Good Days within the Capítulo):**
+**Is dropping XP from the Chapter gate safe?** The original hybrid gate existed specifically to prevent "front-loading" — advancing via Good Days alone without real effort. This is judged to remain sufficiently protected without a separate XP condition, because Good Day % itself (Section 6.2) already requires meaningful Habit *and* Main Task completion to clear the 80% threshold — a pure-Chore day caps at 20%. A player cannot reach the Good-Day gate through low-effort category-gaming; the effort requirement is already load-bearing inside the Good Day % formula itself.
 
-| Capítulo | Good Days total | # Niveles | Cumulative GD thresholds |
+**Formula (same shape, recalibrated for XP magnitudes):**
+
+> **G = XP required for the current Chapter** (the existing XP-per-level table, Section 7.3: Ch.1=450, Ch.2=700, Ch.3=700)
+> **N (Niveles in this Chapter) = max(4, round(√G × 0.24))**
+> **Cumulative XP needed for Nivel n (of N) = round(G × (n/N)^1.4)**
+
+The coefficient changed from 1.6 (tuned for Good-Day-sized G, roughly 7-80) to 0.24 (tuned for XP-sized G, roughly 450-7,650) — reusing 1.6 directly against XP magnitudes would produce absurd results (34 Niveles for a 450-XP chapter, each worth ~13 XP). 0.24 was chosen so Chapter 1 yields 5 Niveles, matching the density the original Good-Day version had for its own first chapter.
+
+**Actual thresholds (computed from the formula, not hand-picked):**
+
+| Chapter | XP total (G) | # Niveles | Cumulative XP thresholds |
 |---|---|---|---|
-| Tutorial (Awakening) | 7 | 4 | 1, 3, 5, 7 |
-| Capítulo 1 | 10 | 5 | 1, 3, 5, 7, 10 |
-| Capítulo 2 | 15 | 6 | 1, 3, 6, 9, 12, 15 |
-| Capítulo 3 | 15 | 6 | 1, 3, 6, 9, 12, 15 |
-| Capítulo 7 (Growth) | 29 | 9 | 1, 4, 6, 9, 13, 16, 20, 25, 29 |
-| Capítulo 15 (Healthy Life) | 80 | 14 | 2, 5, 9, 14, 19, 24, 30, 37, 43, 50, 57, 64, 72, 80 |
+| Chapter 1 | 450 | 5 | 47, 125, 220, 329, 450 |
+| Chapter 2 | 700 | 6 | 57, 150, 265, 397, 542, 700 |
+| Chapter 3 | 700 | 6 | 57, 150, 265, 397, 542, 700 |
 
-**What this achieves:** the first Nivel in any Capítulo always arrives after just 1–2 Good Days (~1–3 real days at a 70% rate) — solving the slow-first-reward problem directly. But the *spacing* between Niveles grows as you progress deeper into a Capítulo — in Capítulo 15, the gap between the last two Niveles is 8 Good Days, versus 2–3 at the start — so a long Capítulo never feels like it's handing out an identical, routine reward every single day (the exact habituation risk that a flat "one Nivel per Good Day" design would have created). Longer Capítulos also naturally generate more Niveles (14 for Capítulo 15 vs. 4 for the Tutorial) purely from the formula, without needing to hand-tune each one individually.
+**Nivel is now checked in real time, at the moment of task completion — not deferred to the next-day Good Day backfill.** XP (unlike Good Days) is available immediately on completion, so there's no reason to wait; the celebration fires the same session the threshold is crossed.
 
-**What a Nivel-up actually does:** a Nivel-up is a **visual-only reward** — it triggers a small ship construction increment (Section 10.6) — and does **not** award its own separate XP. The Good Day that triggered it already awarded XP through normal task completion; adding a second XP stream here would create redundant currency and wasn't necessary to solve the pacing problem.
+**A player can max out Nivel before the Chapter's Good-Day gate clears, or vice versa — this is intentional, not a flaw.** Raised as a concern directly by Gus and resolved in conversation: the two axes are independent by design, and this exact scenario already existed in the original hybrid-gate version in mirrored form (maxing the old GD-based Nivel without yet meeting the XP/rate conditions to leave the Chapter). Reaching max Nivel while Good Days lag is the game honestly communicating "you've put in the effort, now live it consistently" — precisely Section 2's stated philosophy made visible. Both the Good Days and Nivel progress bars are shown together, so the player always has full visibility into why they're waiting, if they are.
 
-**Relationship to micro-milestones (Section 5.2):** the Nivel system supersedes the earlier micro-milestone mechanic. Both existed to solve the same problem — preventing a Capítulo from feeling like a silent grind — but Nivel is a strictly finer-grained version of the same idea. Keeping both would mean two overlapping reward layers doing near-identical jobs. Micro-milestones as a separate named-achievement-with-XP-bonus concept is retired; Niveles take over that role, with the visual ship reward standing in for what the XP bonus used to provide.
+**What a Nivel-up actually does:** a Nivel-up is a **visual-only reward** — it triggers a small ship construction increment (Section 10.6) — and does **not** award its own separate XP. The task completion that crossed the threshold already awarded XP; adding a second XP stream here would create redundant currency.
+
+**Relationship to micro-milestones (Section 5.2):** the Nivel system supersedes the earlier micro-milestone mechanic, same as before this revision. Micro-milestones as a separate named-achievement-with-XP-bonus concept remains retired; Niveles take over that role, with the visual ship reward standing in for what the XP bonus used to provide.
 
 ---
 
@@ -723,4 +733,5 @@ Running record of locked decisions, so we don't relitigate settled ground.
 - **XP-per-level (numbers locked):** anchored from Career's Level 15 weekly target (110 XP) divided by its area weight (18.7%), giving ~84 XP/day at L15 and ~41 XP/day at L1. XP-per-level scales via smootherstep from 450 (L1) to 7,650 (L15). Total 53,100 XP across the full Growth Phase. Levels 14-15 deliberately share the same XP and Good Day requirement — the top of Healthy Life is about sustaining, not adding.
 - **Capacity-per-level (numbers locked):** 0-100 scale per area, smootherstep S-curve from 10 (L1) to 100 (L14-15). All five areas share the same raw Capacity value at each level — Foundation vs. Other area weighting is applied only at the Global Capacity rollup stage (Section 4.2), not baked into different raw values. Decay floor = Capacity × 0.82 (the 18% tier cap from Section 4.3) at every level.
 - **Task Activation Delay (Section 6.5, new):** newly created tasks earn full Growth XP starting the day *after* creation, not the same day — closes a real gap where a player could invent a fake task in the moment purely to earn XP right now. A fixed evening planning window (e.g. "only between 8-10pm") was explicitly proposed by Gus, considered, and rejected — it would punish a single missed window the same way a fragile streak does, contradicting the grace-window/rolling-rate philosophy used everywhere else in this design. Simplified to a clock-agnostic rule: created Day N → full XP from Day N+1. Same-day-completed tasks aren't discarded — they route through the existing Bonus XP channel (Section 6.1, already used for Side Quests) rather than full Growth XP. Path template tasks (e.g. "Just Stabilize") are exempt, since they're pre-designed, not fabricated in the moment — preserves the fast first-reward design for new Tutorial players. New system Habit "Planned tomorrow" (standard Habit-tier XP, always available, no Milestone needed) reinforces the evening-planning ritual organically instead of through a hard time-lock.
+- **Tutorial retired; Nivel switched from Good-Day-driven to XP-driven; Chapter-up gate switched from hybrid (XP+GD) to Good-Day-only (Section 7.5, revised):** raised by Gus as a UX concern — after building the immediate XP feedback + "XP today" counter (Section 2.1), it felt wrong that a brand-new player's Nivel bar stayed empty through the whole Tutorial phase (Good-Day-only, no XP threshold) despite actively earning XP from their very first task. Proposed and confirmed: split the two motivators cleanly — **Nivel now tracks the Effort axis (cumulative XP within the current Chapter)**, **Chapter-up now tracks the Balance axis only (lifetime Good Days + rolling rate, no XP condition)**. This made Tutorial redundant (its two justifications — no XP-gating, fast first reward — are now inherently true of Chapter 1) and it was retired; players start at Chapter 1 directly. Dropping XP from the Chapter gate was checked against the original "front-loading" concern that motivated the hybrid gate in the first place — judged safe because Good Day % (Section 6.2) already requires real Habit + Main Task completion to clear 80%, so the effort requirement isn't actually gone, just no longer double-counted as a separate condition. The Nivel formula's coefficient was recalibrated for XP-sized magnitudes (0.24, down from 1.6) since the original was tuned for Good-Day-sized numbers and would have produced absurd results (34 Niveles for Chapter 1) applied directly to XP. Nivel-checking also moved from the next-day Good Day backfill to real time (checked at the moment of task completion), since XP — unlike Good Days — is available immediately. Also discussed and accepted as an intentional consequence, not a flaw: a player can now max out Nivel before the Chapter's Good Day gate clears (or vice versa) — the two axes are meant to move independently, and both progress bars stay visible together so the causality is never hidden.
 

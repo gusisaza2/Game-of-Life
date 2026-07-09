@@ -1,11 +1,12 @@
-// Good Day → Level-up gate — CLAUDE.md "Core formulas" #7.
-// MVP scope is Tutorial + Levels 1-3 only, so gates only go up to the 2→3
-// boundary (per CLAUDE.md: Levels 4-15 explicitly out of scope for now).
+// Good Day → Chapter-up gate — CLAUDE.md "Core formulas" #7 (revised this
+// session: XP threshold dropped, gate is now Good-Day-only; XP instead
+// drives the Nivel system, see nivel.ts). Tutorial is retired — players
+// start at Chapter 1, so gates only span 1→2 and 2→3 (Chapter 4 is out of
+// MVP scope).
 
 export type LevelGate = {
   fromLevel: number;
   toLevel: number;
-  xpThreshold: number | null;
   goodDayThreshold: number;
   rollingWindowDays: number;
   rateFloor: number;
@@ -13,26 +14,16 @@ export type LevelGate = {
 
 export const LEVEL_GATES: LevelGate[] = [
   {
-    fromLevel: 0, // Tutorial ("Awakening")
-    toLevel: 1,
-    xpThreshold: null, // Tutorial gates purely on Good Days, no XP requirement.
-    goodDayThreshold: 7,
-    rollingWindowDays: 14,
-    rateFloor: 0.5,
-  },
-  {
     fromLevel: 1,
     toLevel: 2,
-    xpThreshold: 450,
-    goodDayThreshold: 17,
+    goodDayThreshold: 10, // Chapter 1's own Good Day requirement (no Tutorial prefix anymore).
     rollingWindowDays: 14,
     rateFloor: 0.5,
   },
   {
     fromLevel: 2,
     toLevel: 3,
-    xpThreshold: 1150,
-    goodDayThreshold: 32,
+    goodDayThreshold: 25, // 10 (Chapter 1) + 15 (Chapter 2).
     rollingWindowDays: 14,
     rateFloor: 0.5,
   },

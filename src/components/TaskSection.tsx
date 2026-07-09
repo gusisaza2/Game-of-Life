@@ -8,7 +8,11 @@ type Task = {
   title: string;
 };
 
-type XpFlash = { xpAwarded: number; xpType: "growth" | "bonus" };
+type XpFlash = {
+  xpAwarded: number;
+  xpType: "growth" | "bonus";
+  nivelUp: { nivelReached: number; totalNiveles: number } | null;
+};
 
 function TaskItem({
   task,
@@ -29,13 +33,13 @@ function TaskItem({
       const result = await toggleTaskCompletion(task.id, playerId, today, completed);
       if (result) {
         setFlash(result);
-        setTimeout(() => setFlash(null), 1800);
+        setTimeout(() => setFlash(null), 2400);
       }
     });
   }
 
   return (
-    <li>
+    <li className="flex flex-col gap-1">
       <label className="flex items-center gap-3 rounded-lg border border-foreground/10 px-4 py-3 cursor-pointer hover:bg-foreground/5">
         <input
           type="checkbox"
@@ -53,6 +57,11 @@ function TaskItem({
           </span>
         )}
       </label>
+      {flash?.nivelUp && (
+        <p className="px-4 text-xs font-medium text-foreground/70">
+          ¡Nivel up! {flash.nivelUp.nivelReached} / {flash.nivelUp.totalNiveles}
+        </p>
+      )}
     </li>
   );
 }

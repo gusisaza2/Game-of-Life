@@ -10,16 +10,17 @@ export type NivelCheckResult = {
   event: NivelUpEvent | null;
 };
 
-// Pure decision: given the player's current Chapter state, detects whether
-// a new Nivel threshold was just crossed. No I/O — see the note on
-// computeLevelUp in level-up-service.ts for why (this always operates on
-// in-memory state passed in by the Good Day backfill loop).
+// Pure decision: given the player's current Chapter/XP state, detects
+// whether a new Nivel threshold was just crossed. No I/O — XP (unlike
+// Good Days) is awarded immediately on task completion, so this is called
+// synchronously right after cumulative_xp changes (src/app/actions.ts),
+// not from the Good Day backfill loop.
 export function computeNivelUp(player: {
   current_level: number;
-  lifetime_good_day_count: number;
+  cumulative_xp: number;
   last_nivel_reached: number;
 }): NivelCheckResult {
-  const progress = getNivelProgress(player.current_level, player.lifetime_good_day_count);
+  const progress = getNivelProgress(player.current_level, player.cumulative_xp);
   if (!progress || progress.currentNivel <= player.last_nivel_reached) {
     return { lastNivelReached: player.last_nivel_reached, event: null };
   }

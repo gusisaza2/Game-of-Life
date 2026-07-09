@@ -24,13 +24,17 @@ function ProgressBar({ label, progress }: { label: string; progress: ProgressIte
   );
 }
 
+function formatXp(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
 function NivelBar({ nivel }: { nivel: NivelProgress }) {
   const pct =
     nivel.nextNivelThreshold === null
       ? 100
-      : Math.min(100, (nivel.goodDaysInChapter / nivel.nextNivelThreshold) * 100);
+      : Math.min(100, (nivel.xpInChapter / nivel.nextNivelThreshold) * 100);
   const remaining =
-    nivel.nextNivelThreshold === null ? null : nivel.nextNivelThreshold - nivel.goodDaysInChapter;
+    nivel.nextNivelThreshold === null ? null : nivel.nextNivelThreshold - nivel.xpInChapter;
   // The Nivel currently being worked toward (1-indexed) — e.g. "Nivel 1"
   // while progressing from 0 reached toward the first threshold.
   const displayNivel = Math.min(nivel.currentNivel + 1, nivel.totalNiveles);
@@ -52,7 +56,7 @@ function NivelBar({ nivel }: { nivel: NivelProgress }) {
       <p className="text-xs text-foreground/50">
         {remaining === null
           ? "Último Nivel de este Capítulo"
-          : `${remaining} Good Day${remaining === 1 ? "" : "s"} para el próximo Nivel`}
+          : `${formatXp(remaining)} XP para el próximo Nivel`}
       </p>
     </div>
   );
@@ -61,13 +65,11 @@ function NivelBar({ nivel }: { nivel: NivelProgress }) {
 export function LevelProgress({
   levelLabel,
   milestoneName,
-  xp,
   goodDays,
   nivel,
 }: {
   levelLabel: string;
   milestoneName: string | null;
-  xp: ProgressItem | null;
   goodDays: ProgressItem | null;
   nivel: NivelProgress | null;
 }) {
@@ -77,7 +79,6 @@ export function LevelProgress({
         {levelLabel}
         {milestoneName && <span className="text-foreground/60"> · {milestoneName}</span>}
       </p>
-      {xp && <ProgressBar label="XP" progress={xp} />}
       {goodDays && <ProgressBar label="Good Days" progress={goodDays} />}
       {nivel && <NivelBar nivel={nivel} />}
     </div>

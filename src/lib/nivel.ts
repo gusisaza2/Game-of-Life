@@ -1,38 +1,47 @@
-// Nested Nivel system — design doc Section 7.5 / CLAUDE.md Core formula #8.
-// A finer-grained reward layer inside each Chapter, based on cumulative
-// Good Days *within the current Chapter only* (resets when a new Chapter
-// starts). Supersedes the never-built micro-milestone mechanic.
+// Nested Nivel system — design doc Section 7.5, revised this session.
+// A finer-grained reward layer inside each Chapter, now based on
+// cumulative XP *within the current Chapter only* (resets when a new
+// Chapter starts) rather than Good Days. This makes Nivel track the
+// Effort axis and Chapter track the Balance axis (lifetime_good_day_count)
+// as two independent motivators — CLAUDE.md/Section 2: "Effort without
+// balance does not level the player. Balance without effort does not
+// level the player."
 
-// Total Good Days required to complete each Chapter (the "G" in the
-// formula) — CLAUDE.md Section 8 / design doc Section 7.5 example table.
-// Only spans MVP scope (Tutorial + Chapters 1-3); undefined beyond that.
-const CHAPTER_GOOD_DAY_TOTAL: Record<number, number> = {
-  0: 7, // Tutorial
-  1: 10,
-  2: 15,
-  3: 15,
+// XP required to complete each Chapter (the "G" in the formula) — matches
+// the already-locked XP-per-level table (design doc Section 7.3). No
+// longer used for Chapter-gating (that's Good-Day-only now), only for
+// pacing Nivel. Tutorial is retired; only spans MVP scope (Chapters 1-3).
+const CHAPTER_XP_TOTAL: Record<number, number> = {
+  1: 450,
+  2: 700,
+  3: 700,
 };
 
-// Cumulative lifetime Good Days already banked at the moment a Chapter is
-// entered — i.e. the previous Chapter's exit threshold. Used to derive
-// "Good Days within the current Chapter" from the lifetime total.
-const CHAPTER_ENTRY_GD_THRESHOLD: Record<number, number> = {
-  0: 0,
-  1: 7,
-  2: 17,
-  3: 32,
+// Cumulative lifetime XP already banked at the moment a Chapter is
+// entered — i.e. the previous Chapter's exit threshold.
+const CHAPTER_ENTRY_XP_THRESHOLD: Record<number, number> = {
+  1: 0,
+  2: 450,
+  3: 1150,
 };
 
-export function nivelCountForChapter(goodDaysTotal: number): number {
-  return Math.max(4, Math.round(Math.sqrt(goodDaysTotal) * 1.6));
+// Calibrated so Chapter 1 (G=450) yields 5 Niveles — the same density the
+// original Good-Day-based Nivel had for its first chapter. Chapters 2-3
+// (G=700) yield 6. (The old coefficient, 1.6, was tuned for Good-Day-sized
+// G values like 7-80; reused directly against XP-sized G values like
+// 450-7,650 it would yield absurd results, e.g. 34 Niveles for Chapter 1.)
+const NIVEL_COUNT_COEFFICIENT = 0.24;
+
+export function nivelCountForChapter(xpTotal: number): number {
+  return Math.max(4, Math.round(Math.sqrt(xpTotal) * NIVEL_COUNT_COEFFICIENT));
 }
 
-// Cumulative Good-Days-within-chapter threshold for each Nivel, 1-indexed.
-export function nivelThresholds(goodDaysTotal: number): number[] {
-  const n = nivelCountForChapter(goodDaysTotal);
+// Cumulative XP-within-chapter threshold for each Nivel, 1-indexed.
+export function nivelThresholds(xpTotal: number): number[] {
+  const n = nivelCountForChapter(xpTotal);
   const thresholds: number[] = [];
   for (let nivel = 1; nivel <= n; nivel++) {
-    thresholds.push(Math.round(goodDaysTotal * (nivel / n) ** 1.4));
+    thresholds.push(Math.round(xpTotal * (nivel / n) ** 1.4));
   }
   return thresholds;
 }
@@ -40,34 +49,34 @@ export function nivelThresholds(goodDaysTotal: number): number[] {
 export type NivelProgress = {
   currentNivel: number; // 0 if none reached yet this Chapter
   totalNiveles: number;
-  goodDaysInChapter: number;
-  goodDaysNeededForChapter: number;
-  // Cumulative Good-Days-within-chapter needed for the *next* Nivel; null
-  // if currentNivel is already the last one for this Chapter (the player
-  // is just waiting on the Chapter's other gate conditions — XP, rate —
-  // to advance, not on more Good Days for a Nivel).
+  xpInChapter: number;
+  xpNeededForChapter: number;
+  // Cumulative XP-within-chapter needed for the *next* Nivel; null if
+  // currentNivel is already the last one for this Chapter (the player is
+  // just waiting on Good Days to advance the Chapter itself, not on more
+  // XP for a Nivel).
   nextNivelThreshold: number | null;
 };
 
 // Returns null for a Chapter outside MVP scope (nothing to compute yet).
 export function getNivelProgress(
   currentLevel: number,
-  lifetimeGoodDayCount: number,
+  cumulativeXp: number,
 ): NivelProgress | null {
-  const goodDaysTotal = CHAPTER_GOOD_DAY_TOTAL[currentLevel];
-  if (goodDaysTotal === undefined) return null;
+  const xpTotal = CHAPTER_XP_TOTAL[currentLevel];
+  if (xpTotal === undefined) return null;
 
-  const entryThreshold = CHAPTER_ENTRY_GD_THRESHOLD[currentLevel] ?? 0;
-  const goodDaysInChapter = Math.max(0, lifetimeGoodDayCount - entryThreshold);
-  const thresholds = nivelThresholds(goodDaysTotal);
-  const currentNivel = thresholds.filter((t) => goodDaysInChapter >= t).length;
+  const entryThreshold = CHAPTER_ENTRY_XP_THRESHOLD[currentLevel] ?? 0;
+  const xpInChapter = Math.max(0, cumulativeXp - entryThreshold);
+  const thresholds = nivelThresholds(xpTotal);
+  const currentNivel = thresholds.filter((t) => xpInChapter >= t).length;
   const nextNivelThreshold = currentNivel < thresholds.length ? thresholds[currentNivel] : null;
 
   return {
     currentNivel,
     totalNiveles: thresholds.length,
-    goodDaysInChapter,
-    goodDaysNeededForChapter: goodDaysTotal,
+    xpInChapter,
+    xpNeededForChapter: xpTotal,
     nextNivelThreshold,
   };
 }
