@@ -23,10 +23,21 @@ export default async function TodayPage() {
   }
 
   const earliestDate = getDateString(new Date(player.created_at));
-  const yesterdayGoodDay = await getYesterdayGoodDay(player.id, today, earliestDate);
+  const {
+    goodDay: yesterdayGoodDay,
+    nivelUp,
+    player: freshPlayerState,
+  } = await getYesterdayGoodDay(player.id, today, earliestDate);
+  // The backfill above may have just changed the Chapter, XP gate progress,
+  // or Nivel — use its returned state rather than the `player` fetched
+  // above, which is now stale.
+  const currentLevel = freshPlayerState?.current_level ?? player.current_level;
+  const cumulativeXp = freshPlayerState?.cumulative_xp ?? Number(player.cumulative_xp);
+  const lifetimeGoodDayCount =
+    freshPlayerState?.lifetime_good_day_count ?? player.lifetime_good_day_count;
 
   // Decay has no cron yet — recompute on-read (CLAUDE.md build order).
-  await refreshAllAreaCapacities(player.id, player.current_level, today, earliestDate);
+  await refreshAllAreaCapacities(player.id, currentLevel, today, earliestDate);
 
   const [{ data: tasks }, { data: logs }] = await Promise.all([
     supabase
@@ -47,13 +58,9 @@ export default async function TodayPage() {
   const mainTasks = (tasks ?? []).filter((t) => t.tier === "main_task");
   const chores = (tasks ?? []).filter((t) => t.tier === "chore");
 
-  const levelLabel = player.current_level === 0 ? "Tutorial" : `Level ${player.current_level}`;
-  const milestoneName = milestoneNameForLevel(player.current_level);
-  const progress = getLevelProgress(
-    player.current_level,
-    Number(player.cumulative_xp),
-    player.lifetime_good_day_count,
-  );
+  const levelLabel = currentLevel === 0 ? "Tutorial" : `Chapter ${currentLevel}`;
+  const milestoneName = milestoneNameForLevel(currentLevel);
+  const progress = getLevelProgress(currentLevel, cumulativeXp, lifetimeGoodDayCount);
 
   return (
     <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
@@ -63,6 +70,12 @@ export default async function TodayPage() {
           Manage →
         </Link>
       </header>
+
+      {nivelUp && (
+        <div className="w-full max-w-md rounded-lg border border-foreground/20 bg-foreground/5 px-4 py-3 text-center text-sm font-medium">
+          Nivel up! {nivelUp.nivelReached} / {nivelUp.totalNiveles}
+        </div>
+      )}
 
       <LevelProgress
         levelLabel={levelLabel}

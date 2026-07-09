@@ -410,6 +410,37 @@ Capacity is measured on a **0–100 scale per area**. All five areas use the sam
 
 **Overflow XP and Capacity:** the Growth XP ceiling from overflow (Section 6.4, ~36% of a normal XP unit per day) is calculated against the player's *current per-area daily XP ceiling* (this section, not the blended global cap) — so overflow's absolute value scales with both Capacity and the specific area's weight, keeping it proportionally capped at every level and every area.
 
+### 7.5 Nested Nivel System — Terminology & Reward Cadence (Locked, including numbers)
+
+**Terminology change:** what this document previously called "Level" (Tutorial, Level 1–15) is renamed **Capítulo/Chapter**. Every number already locked for Levels 1–15 — Good Day thresholds, XP thresholds, Capacity, area weights — carries over unchanged under the new name. Nothing about the underlying math changes; only the label.
+
+**Why this changed:** stress-testing the pacing (informal, conversational — not a coded simulation) surfaced a real problem: reaching the very first Capítulo (Tutorial → Level 1, ~10 days at a realistic Good Day rate) was too long a wait for a brand-new player's *first* reward moment, and later Capítulos (e.g. Milestone I, ~8 weeks total) had long visible stretches with no reward at all. The fix needed to preserve every already-validated number (Good Day counts, XP curve, Capacity curve) while adding a faster, finer reward cadence on top.
+
+**The new "Nivel" is a sub-unit inside each Capítulo, one layer finer than Good Days.** A Nivel fires when a player's *cumulative Good Days within the current Capítulo* crosses a threshold defined by an exponential curve:
+
+> **Cumulative Good Days needed for Nivel n (of N total Niveles in this Capítulo) = round(G × (n/N)^1.4)**, where G = that Capítulo's total Good Day requirement. The final Nivel always coincides exactly with Capítulo completion.
+
+**Number of Niveles per Capítulo** scales with that Capítulo's size, but sublinearly (not 1:1 with Good Days, which would make Nivel-ups feel routine/expected rather than earned):
+
+> **N (niveles in this Capítulo) = max(4, round(√G × 1.6))**
+
+**Example thresholds (cumulative Good Days within the Capítulo):**
+
+| Capítulo | Good Days total | # Niveles | Cumulative GD thresholds |
+|---|---|---|---|
+| Tutorial (Awakening) | 7 | 4 | 1, 3, 5, 7 |
+| Capítulo 1 | 10 | 5 | 1, 3, 5, 7, 10 |
+| Capítulo 2 | 15 | 6 | 1, 3, 6, 9, 12, 15 |
+| Capítulo 3 | 15 | 6 | 1, 3, 6, 9, 12, 15 |
+| Capítulo 7 (Growth) | 29 | 9 | 1, 4, 6, 9, 13, 16, 20, 25, 29 |
+| Capítulo 15 (Healthy Life) | 80 | 14 | 2, 5, 9, 14, 19, 24, 30, 37, 43, 50, 57, 64, 72, 80 |
+
+**What this achieves:** the first Nivel in any Capítulo always arrives after just 1–2 Good Days (~1–3 real days at a 70% rate) — solving the slow-first-reward problem directly. But the *spacing* between Niveles grows as you progress deeper into a Capítulo — in Capítulo 15, the gap between the last two Niveles is 8 Good Days, versus 2–3 at the start — so a long Capítulo never feels like it's handing out an identical, routine reward every single day (the exact habituation risk that a flat "one Nivel per Good Day" design would have created). Longer Capítulos also naturally generate more Niveles (14 for Capítulo 15 vs. 4 for the Tutorial) purely from the formula, without needing to hand-tune each one individually.
+
+**What a Nivel-up actually does:** a Nivel-up is a **visual-only reward** — it triggers a small ship construction increment (Section 10.6) — and does **not** award its own separate XP. The Good Day that triggered it already awarded XP through normal task completion; adding a second XP stream here would create redundant currency and wasn't necessary to solve the pacing problem.
+
+**Relationship to micro-milestones (Section 5.2):** the Nivel system supersedes the earlier micro-milestone mechanic. Both existed to solve the same problem — preventing a Capítulo from feeling like a silent grind — but Nivel is a strictly finer-grained version of the same idea. Keeping both would mean two overlapping reward layers doing near-identical jobs. Micro-milestones as a separate named-achievement-with-XP-bonus concept is retired; Niveles take over that role, with the visual ship reward standing in for what the XP bonus used to provide.
+
 ---
 
 ## 8. Goal → Milestone → Task Structure (Locked)
@@ -526,13 +557,84 @@ Titles are unlocked at Mastery Tier milestones or by completing long-term Goals 
 | Masterful | 5 days | 15% | 0.425%/day |
 | Legendary | 5 days | 20% | 0.400%/day |
 
-### 9.6 Exploration Unlocks (Locked shape, content TBD)
+### 9.6 Exploration Unlocks (Locked — now has concrete form via the Ship, Section 10)
 
-MP can be spent (or achievements can unlock) new Path templates or narrative content — giving the Exploration Area a genuine payoff loop, consistent with Exploration being one of the five core reward pillars in Section 1. Specific unlockable content is a content-backlog item, not part of this core mechanical spec (same treatment as the Path template examples in Section 8.4).
+MP can be spent on Ship customization (see Section 10) — giving the Exploration Area a genuine payoff loop, consistent with Exploration being one of the five core reward pillars in Section 1. This replaces the earlier placeholder ("new Path templates or narrative content") with a concrete mechanic: MP funds cosmetic customization of the Ship once it's fully built at Level 15.
 
 ---
 
-## 10. Healthy Life Target — Reference (Locked, source spec)
+## 10. Visual Identity — The Ship (Locked concept, implementation details TBD)
+
+The central visual metaphor for the entire game: the player's journey is represented as **building, then sailing, a ship.** This section defines the concept; actual illustration/asset creation is separate downstream work (see note at end of section).
+
+### 10.1 Why a Ship (Locked)
+
+Earlier candidates were considered and rejected. A growing tree/plant was the first instinct, but felt **too passive** — growth happens to a tree without visible effort, and this game is explicitly about how much responsibility a person can *actively* sustain (Section 1's core design question). A ship solves this: building one is unmistakably active labor, piece by piece, and "building a life" is already a metaphor everyone intuitively understands. It also naturally splits into two phases that map perfectly onto the game's existing two-phase structure:
+
+- **Growth Phase (Levels 1–15) = building the ship.** Automatic construction, tied directly to level-ups — no currency spent, nothing to purchase. This is deliberate: allowing cosmetic purchases during the fragile early game would reintroduce exactly the grind-for-rewards pressure this game rejects. Each level-up adds a visible physical piece (a plank, a sail, a mast) — pure reward for progress, zero cost.
+- **Mastery Phase (Level 15+) = sailing and customizing the ship.** Once fully built, the Ship becomes something to personalize using MP (Section 9.2) — skins, decorations, figureheads, cabin themes. This gives concrete shape to the "Exploration Unlocks" mechanic that was previously just a placeholder (Section 9.6).
+
+### 10.2 Area → Ship Part Mapping (Locked)
+
+| Main Area | Ship part | Reasoning |
+|---|---|---|
+| **Physical Health** | The hull | If the hull fails, the whole ship sinks — literally the physical foundation everything else depends on |
+| **Mental Health** | The helm/wheel | Clarity of direction; who's steering |
+| **Career** | The sails | What propels the ship forward — momentum, progress |
+| **Relationships** | The crew quarters/cabin | Who's aboard with you on the journey |
+| **Exploration** | The crow's nest/spyglass | Looking ahead, discovering what's over the horizon |
+
+**Notable and not a coincidence:** the two Foundation areas (Physical Health, Mental Health) landed on the two most structurally critical parts of the ship (hull, helm) — which mirrors the fact that these two areas are already weighted highest in the Global Capacity rollup during early levels (Section 4.2). The visual metaphor and the underlying math reinforce each other rather than being designed independently.
+
+### 10.3 Representing Hidden Systems Without Numbers (Conceptual — needs further design)
+
+Capacity must stay hidden (Section 2.2) — the Ship gives a way to represent its effects visually without ever surfacing a raw number:
+
+- **Decay (Section 4.3)** could show as visible wear on the relevant ship part — looser sails, a hull needing maintenance — never with shame-based language, framed as an invitation to tend to it rather than a penalty for neglecting it. This still needs concrete design (exactly what "wear" looks like at each decay stage) before it's implementation-ready.
+- **Good Days / Balance Streak (Sections 5, 9.4)** could show as the weather and sailing conditions around the ship — calm seas and fair wind on a good stretch, rougher conditions during a lapse — rather than a cold progress bar. This is a promising direction but not yet locked; needs its own design pass.
+
+### 10.4 Color Palette per Area (Proposed, pending final confirmation)
+
+Proposed during this same session, intuitive associations rather than arbitrary assignment:
+
+| Area | Color |
+|---|---|
+| Physical Health | Green |
+| Mental Health | Purple/violet |
+| Career | Blue |
+| Relationships | Coral/pink |
+| Exploration | Amber/orange |
+
+Each area gets instant visual identity — recognizable by color alone, without reading text. Not yet stress-tested against the Ship visuals specifically (e.g. does a green-tinted hull actually look good) — worth confirming once actual illustration work begins.
+
+### 10.5 Art Style & World Setting (Locked)
+
+**Art style: flat vector/minimalist illustration.** Clean shapes, limited palette, modern app aesthetic — chosen specifically because it's the most implementable option without depending on complex generated illustration for every construction stage; Claude Code can build this directly in code (SVG/CSS), unlike storybook, watercolor, or painterly styles which don't hold up well when produced programmatically. Vintage nautical (sepia ink) and storybook illustration were both considered and set aside for this reason, not because they were the wrong tone.
+
+**World setting changes with phase, mirroring the game's own two-phase structure:** during the Growth Phase (Capítulos, Section 7.5), the Ship is **in the shipyard, under construction** — the player is on land, building. At Capítulo 15 (Healthy Life complete), there's a major visual transition: **the Ship launches into open water for the first time.** The entire Mastery Phase (Section 9) takes place at sea, sailing — matching the philosophical shift from "still building a life" (Growth) to "living it, now going deeper" (Mastery).
+
+### 10.6 Construction Progression by Milestone (Locked concept)
+
+Construction follows the same order in which Areas gain real weight in the Global Capacity rollup (Section 4.2) — Foundation areas first, then Career/Mental, then Relationships/Exploration last. This isn't decorative; the visual metaphor and the underlying weight curve are expressions of the same design logic, not designed independently.
+
+| Milestone | What gets built | Area tie-in | Why it fits |
+|---|---|---|---|
+| Tutorial (Awakening) | Empty dock, lumber piled up, keel just laid — dawn in the background | — | Literal "awakening" — nothing built yet, just the decision to begin |
+| I — Stability (1–3) | Hull takes shape — keel + ribs visible, not yet closed | Physical Health (hull) | Least glamorous, most essential — matches Stability being pure foundation |
+| II — Momentum (4–6) | Hull closed with planking, deck installed, mast raised (no sails yet) | — (transitional) | A standing mast with no sails = capacity building without yet being used — literal momentum accumulating |
+| III — Growth (7–9) | Sails raised, helm installed | Career (sails) + Mental Health (helm) | The ship can now actually be steered and driven — real progress and clear direction, exactly what Growth represents |
+| IV — Balance (10–12) | Crew quarters and crow's nest added | Relationships (quarters) + Exploration (crow's nest) | These two areas gain real weight for the first time at this stage in the Section 4.2 curve — the ship gaining these parts now is not a coincidence |
+| V — Healthy Life (13–15) | Final details — figurehead, flags, finishing touches. Ship is complete | — | Level 15 = the launch moment, the Ship touches water for the first time |
+
+**Fine-grained increments (Locked — resolves the "8 weeks staring at the same hull" pacing problem):** rather than only the 6 milestone-level changes above, every **Nivel** (Section 7.5) and every Capítulo completion triggers a small visual increment on the Ship — e.g. within Milestone I alone (Tutorial + Capítulos 1–3), there are enough Nivel-ups to produce roughly 20+ distinct small visual changes (first ribs appear, ribs complete, first planks, planking half-done, planking complete, etc.) rather than one static scene for 8 weeks straight. The 6 milestone stages above are the "chapters" of construction; Niveles are the frequent small beats that fill the space between them, arriving every 1–8 Good Days depending on how deep into the current Capítulo the player is (Section 7.5's exponential spacing).
+
+### 10.7 Implementation Note
+
+This section defines *concept*, not production-ready assets. The actual Ship illustration — what it looks like at each construction stage, the specific art style, individual part designs — is downstream creative work, likely done either by (a) commissioning real illustration, or (b) using an external image-generation tool (Midjourney, DALL-E, etc.) fed with a detailed prompt derived from this section, since Claude's own tools in this conversation are constrained to flat, UI-system-bound mockups and can't produce this kind of illustrated game art directly. Once concept art exists, Claude Code would need those assets (or CSS/SVG built to match them) to actually implement the Ship in the app.
+
+---
+
+## 11. Healthy Life Target — Reference (Locked, source spec)
 
 This is the *endpoint* of the Growth Phase — what Level 15 / Milestone V is building toward. Restated here for reference as numbers get built against it.
 
@@ -544,7 +646,7 @@ This is the *endpoint* of the Growth Phase — what Level 15 / Milestone V is bu
 
 ---
 
-## 11. Open Items — Needs Numbers
+## 12. Open Items — Needs Numbers
 
 Everything below is shape-locked but value-undetermined. This is the active work queue.
 
@@ -559,7 +661,7 @@ Everything below is shape-locked but value-undetermined. This is the active work
 
 ---
 
-## 12. Stress Test — Simulated Player Walkthrough (Validation Record)
+## 13. Stress Test — Simulated Player Walkthrough (Validation Record)
 
 Before designing the Mastery Phase, the full Growth Phase was run through a simulated 28-day playthrough (Tutorial → Level 1) to check whether the locked systems behave correctly *together*, not just individually. This section is a validation record, not a new design layer — it's preserved so future changes can be checked against what was actually verified.
 
@@ -577,7 +679,7 @@ Before designing the Mastery Phase, the full Growth Phase was run through a simu
 
 ---
 
-## 13. Decisions Log
+## 14. Decisions Log
 
 Running record of locked decisions, so we don't relitigate settled ground.
 
@@ -596,6 +698,9 @@ Running record of locked decisions, so we don't relitigate settled ground.
 - Level curve: S-curve, not linear. Slow ramp (1-3) → steep ramp (4-9) → flattening (10-15).
 - **Growth Phase stress test (Section 11 → now Section 12):** simulated 28-day playthrough validated decay, rolling-window rate floor, and Good Day formula all work as designed. Found and fixed one real gap: Daily XP Cap (Section 7.3) was a blended total across all 5 areas with no per-area split. **Fix locked:** per-area daily XP ceiling = Global Daily Cap × that area's current weight (Section 4.2). Confirmed as intended (not a bug): players focused on fewer active areas take longer to level — this honestly reflects lower current sustainable capacity, consistent with the core design question in Section 1.
 - **Mastery Phase (Section 9, numbers locked):** begins at Level 15, never ends. Runs on Mastery Points (MP) — separate currency, 8 MP/Good Day baseline (~2,044 MP/year at 70% rate), plus Overflow XP and Bonus XP (already routed here). MP earned per-area, not pooled. 5 Mastery Tiers per area (Committed → Legendary), escalating cost from 500 to 5,250 MP, ~13.6 years to Legendary at focused effort — deliberately decades-scale, matching genuine real-world mastery timescales. Balance Streak uses the same rolling-window/rate-floor model as the Good Day gate (60-day window, 50% floor) — classic fragile streak-reset mechanics were explicitly rejected as reintroducing the exact "punish any imperfection" anti-pattern this game exists to avoid. Titles carry small mechanical perks (decay-resilience only — wider grace window, slower decay rate, area-locked, capped at 20% reduction even at Legendary) — deliberately scoped away from XP/overflow boosts to avoid becoming an optimization target for Goal selection; this was a considered trade-off, not an oversight (confirmed directly with Gus, who wanted perks to feel materially rewarding despite the risk).
+- **Visual Identity — The Ship (Section 10, new):** central visual metaphor is building and sailing a ship, replacing an earlier "growing tree" idea rejected for feeling too passive (growth without visible effort, contradicting the core "active sustainable responsibility" design question). Growth Phase = automatic ship construction tied to level-ups, no currency spent (avoids grind-for-cosmetics pressure during the fragile early game). Mastery Phase = ship customization funded by MP (Mastery Points, already locked in Section 9.2) — this gives concrete shape to the previously-abstract "Exploration Unlocks" placeholder (Section 9.6). Area → ship part mapping locked: Physical Health = hull, Mental Health = helm, Career = sails, Relationships = crew quarters, Exploration = crow's nest/spyglass — notably, the two Foundation areas landed on the two structurally most critical parts, mirroring their already-higher weight in the Global Capacity rollup (not a coincidence, both stem from the same design logic). Color-per-area palette proposed (green/purple/blue/coral/amber) but not yet fully re-confirmed against the ship visuals specifically. Decay-as-visible-wear and Good-Days-as-weather are promising directions flagged as needing further design, not yet locked. Actual illustration is out of scope for this document — flagged as either commissioned art or externally-generated (Midjourney/DALL-E etc.) using this section as the source brief, since Claude's own visual tools in this conversation are constrained to flat UI mockups, not illustrated game art.
+- **Terminology change — Level → Capítulo/Chapter (Section 7.5, new):** what was "Level" (Tutorial, Level 1–15) is renamed Capítulo/Chapter; every already-locked number (Good Days, XP, Capacity, area weights) carries over unchanged. **Nested Nivel system (numbers locked):** a new finer-grained sub-unit inside each Capítulo, firing on an exponential curve (cumulative GD for Nivel n = round(G×(n/N)^1.4), N = max(4, round(√G×1.6))) — first Nivel always arrives after just 1-2 Good Days (~1-3 real days), solving a real pacing problem (Tutorial's original ~10-day wait for the first reward felt too slow for a brand-new player). Spacing between Niveles grows the deeper into a Capítulo the player is, preventing the reward from becoming routine/expected. Nivel-ups are visual-only (trigger a Ship construction increment, Section 10.6) and award no separate XP — the underlying Good Day already did. This system **supersedes and retires the earlier micro-milestone mechanic** (Section 5.2) — both solved the same "prevent silent grind" problem, keeping both would have meant redundant overlapping reward layers.
+- **Ship construction progression (Section 10.5-10.6, new):** art style locked as flat vector/minimalist (most implementable in code, unlike storybook/watercolor/vintage-nautical alternatives considered). World setting changes by phase: shipyard (on land, building) during Growth Phase → open water (sailing) from Capítulo 15 onward, mirroring the philosophical shift from "building a life" to "living and deepening it." Six milestone-level construction stages locked (dock/keel → hull → mast → sails+helm → crew quarters+crow's nest → finishing details/launch), following the same Foundation-first, then Career/Mental, then Relationships/Exploration order already established by the Section 4.2 weight curve. Fine-grained Nivel-driven increments (Section 7.5) fill the gaps between milestone stages, directly resolving the concern that a single milestone stage (e.g. hull construction, ~8 weeks) would otherwise show zero visible change for too long.
 - Level 1 accessibility constraint (sleep + one task) treated as a hard constraint on all downstream curve math, not flavor text.
 - **Goal → Milestone → Task structure (new, Section 8):** three-layer player-authored structure — Goal (primary Area + optional secondary Areas) → 2-5 Milestones → Tasks (tagged by tier). No prescribed content; player defines their own life goals. Main Task tier (4.0×) now requires linkage to an active Milestone under an active Goal — closes the previously-unenforced "moves a goal forward" definition. Habits don't require goal-linkage (many are foundational, not goal-shaped). Every player must have ≥1 active Goal, but this can be satisfied by selecting a pre-built Path template rather than authoring from scratch — reconciles the requirement with Level 1 accessibility (blank-page authoring is a real barrier for someone rebuilding/depressed). Path templates are cross-cutting (not per-Area) — built around common real-life goals (e.g. "Healthy Lifestyle," "Bodybuilding," "Career Climber") since real goals rarely respect Area boundaries. A "Just Stabilize" Path exists specifically for Level 1 accessibility. Goals can be paused/abandoned without penalty — consistent with the non-punitive decay philosophy.
 - **XP-per-level (numbers locked):** anchored from Career's Level 15 weekly target (110 XP) divided by its area weight (18.7%), giving ~84 XP/day at L15 and ~41 XP/day at L1. XP-per-level scales via smootherstep from 450 (L1) to 7,650 (L15). Total 53,100 XP across the full Growth Phase. Levels 14-15 deliberately share the same XP and Good Day requirement — the top of Healthy Life is about sustaining, not adding.

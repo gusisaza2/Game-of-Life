@@ -22,16 +22,23 @@ Full design rationale lives in `docs/game_design.md` (the complete design doc �
 
 ## MVP SCOPE — build this first, nothing more
 
-Do NOT implement the full 15-level system, Mastery Phase, or all 5 Main Areas' full weight curves in the first pass. Build in this order:
+Do NOT implement the full 15-chapter system, Mastery Phase, or all 5 Main Areas' full weight curves in the first pass. Build in this order:
 
 **Phase 1 (current target):**
-- Tutorial ("Awakening") + Levels 1, 2, 3 only (Milestone: Stability)
+- Tutorial ("Awakening") + Chapters 1, 2, 3 only (Milestone: Stability)
 - ONE active Path per player at a time (player picks or authors custom — see Goal structure below)
-- Core loop: log a Task → see today's Good Day % → accumulate Good Days + XP → check level-up gate
+- Core loop: log a Task → see today's Good Day % → accumulate Good Days + XP → check chapter-up gate
 - Simplified decay is OK for v1 (exact formula below, but don't over-engineer the UI around it yet)
 
 **Explicitly OUT of scope until Phase 1 is working and tested:**
-- Levels 4–15, Mastery Phase, MP/Titles/Tiers, multiple simultaneous Goals, Side Quest bonus-XP routing, overflow XP curve (can hardcode "no overflow yet" — just cap XP at the daily ceiling for now)
+- Chapters 4–15, Mastery Phase, MP/Titles/Tiers, multiple simultaneous Goals, Side Quest bonus-XP routing, overflow XP curve (can hardcode "no overflow yet" — just cap XP at the daily ceiling for now)
+- **The Ship visual system (design doc Section 10) is NOT ready to build yet.** Concept is locked, but no illustration assets exist and the color palette isn't finalized. Do not attempt to render Ship graphics — use a simple placeholder (a toast/banner reading "Nivel up!" or "Chapter complete!") wherever a visual increment would eventually go. This avoids building throwaway placeholder art that would need to be discarded once real assets exist.
+
+### Terminology update (this session)
+
+What was previously called "Level" throughout the codebase and UI is now called **Chapter** (Capítulo) in all player-facing text. **Do not rename the underlying database column** (`current_level` stays as-is — renaming it is an unnecessary migration risk for a naming-only change). Just update UI labels/copy from "Level" to "Chapter", and any new code added going forward should use "chapter" in variable/function names for anything new, while leaving already-working existing code alone unless you're touching that specific area anyway.
+
+**Micro-milestones (previous Section 8 below) are retired — replaced by the new nested Nivel system (Section 8, rewritten below).** If micro-milestone logic was already implemented, remove it in favor of the new system. If it was only in this planning file and not yet built, simply build the new system instead — nothing to remove.
 
 ---
 
@@ -170,18 +177,29 @@ Level-up requires ALL of:
   3. (good_days_in_last_14_days / 14) >= 0.50
 ```
 
-### 8. Micro-milestones (named achievement, small XP bonus — not a level-up)
-Fires at ~45% of that level's Good Day requirement. Bonus = **10% of that level's total XP requirement** (Level 1's 450 XP requirement → 45 XP bonus).
+### 8. Nested Nivel system (NEW this session — replaces micro-milestones)
+
+Within each Chapter, a finer-grained "Nivel" fires on an exponential curve based on cumulative Good Days *within the current Chapter only* (resets to 0 when a new Chapter starts):
+
 ```
-Tutorial: fires at 3 Good Days   (no XP bonus — Tutorial has no XP threshold at all, see note below)
-Level 1:  fires at 4 Good Days,  bonus = 45 XP   (10% of 450)
-Level 2:  fires at 7 Good Days,  bonus = 70 XP   (10% of 700 per-level requirement)
-Level 3:  fires at 7 Good Days,  bonus = 70 XP   (10% of 700 per-level requirement)
+G = total Good Days required for the current Chapter (Tutorial: 7, Ch.1: 10, Ch.2: 15, Ch.3: 15)
+N = number of Niveles in this Chapter = max(4, round(sqrt(G) * 1.6))
+
+Cumulative GD needed for Nivel n (of N) = round(G * (n/N)^1.4)
+  — the final Nivel always equals G exactly (coincides with Chapter completion)
+
+Example thresholds:
+  Tutorial (G=7, N=4):  Nivel-ups at 1, 3, 5, 7 cumulative Good Days
+  Chapter 1 (G=10, N=5): Nivel-ups at 1, 3, 5, 7, 10
+  Chapter 2 (G=15, N=6): Nivel-ups at 1, 3, 6, 9, 12, 15
+  Chapter 3 (G=15, N=6): Nivel-ups at 1, 3, 6, 9, 12, 15
 ```
+
+**What a Nivel-up does:** visual-only reward (currently a placeholder toast, see MVP scope note above — Ship rendering comes later). **No separate XP is awarded** — the underlying Good Day already granted XP through normal task completion. Track a `last_nivel_reached` value (new field, additive — add to `Player` or a new per-chapter progress table, whichever is less invasive to the existing schema) so the app can detect *when* a new Nivel threshold is crossed and fire the celebration moment exactly once, not on every subsequent page load.
 
 **Tutorial has NO XP threshold — Good Days only.** This is deliberate: Tutorial's job is proving the core loop feels good (activation), not effort-gating. Don't add an XP requirement to Tutorial graduation logic.
 
-**Goal/Path continuity:** the Goal/Path a player selects during Tutorial carries over automatically into Level 1 — never force a re-selection at the Tutorial→Level 1 transition.
+**Goal/Path continuity:** the Goal/Path a player selects during Tutorial carries over automatically into Chapter 1 — never force a re-selection at the Tutorial→Chapter 1 transition.
 
 ---
 
@@ -205,8 +223,15 @@ Level 3:  fires at 7 Good Days,  bonus = 70 XP   (10% of 700 per-level requireme
 3. Seed the 5 Areas + the "Just Stabilize" Path template
 4. Build the daily Task-logging UI (list today's due Habits/Main Tasks/Chores, mark complete)
 5. Implement the Good Day % calculation (server-side, runs at day-rollover or on-demand)
-6. Implement XP accrual + the Level-up gate check
+6. Implement XP accrual + the Chapter-up gate check
 7. Implement decay (can be a scheduled/cron check or computed on-read — on-read is simpler for MVP)
-8. Simple "Today" view + a basic Level/XP progress display (visible) — no Capacity display (hidden per UX principle #1)
+8. Simple "Today" view + a basic Chapter/XP progress display (visible) — no Capacity display (hidden per UX principle #1)
+
+## This session's specific task (if Phase 1 above is already built)
+
+1. Update all player-facing UI text: "Level" → "Chapter" (no database column rename)
+2. Check whether micro-milestone logic (old Section 8) was already implemented — if yes, remove it; if no, skip straight to step 3
+3. Implement the new nested Nivel system (Section 8 above) — add the `last_nivel_reached` tracking field, compute Nivel thresholds per the formula, fire a simple placeholder celebration (toast/banner) on Nivel-up — no Ship graphics yet
+4. Do NOT touch or attempt to build anything from design doc Section 10 (The Ship) — that's explicitly deferred until real illustration assets exist
 
 Ask before adding anything not listed above. When in doubt about a formula or a rule not covered here, check `docs/game_design.md` before guessing.
