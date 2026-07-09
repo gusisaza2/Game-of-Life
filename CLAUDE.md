@@ -201,12 +201,30 @@ Example thresholds:
 
 **Goal/Path continuity:** the Goal/Path a player selects during Tutorial carries over automatically into Chapter 1 — never force a re-selection at the Tutorial→Chapter 1 transition.
 
+### 9. Task Activation Delay (NEW this session)
+
+A newly created Task earns full Growth XP starting the day **after** it's created, not the same day. No fixed clock window (e.g. NOT "only plan 8-10pm") — that would punish a single missed window the same way a fragile streak does. Just: `created_date + 1 day` = when full Growth XP eligibility begins.
+
+```
+if task.created_date == today:
+    completing it today → awards BONUS XP (same channel as Side Quest bonus XP,
+    NOT full tier XP) — feeds Mastery/overflow, not Growth-phase leveling
+else:
+    completing it → awards normal tier XP as usual (formula #1)
+```
+
+**Exemption:** tasks seeded from a Path template (e.g. "Just Stabilize") are exempt — mark them with a `source = 'path_template'` flag (already in the Task/Goal data model) and skip the activation delay check for those. This preserves full XP from Day 1 for a brand-new Tutorial player.
+
+**New seeded system Habit — "Planned tomorrow":** always available to every player, no `milestone_id` required, standard Habit-tier XP (2.5×) when completed. Not player-created — seed it alongside the 5 Areas and Just Stabilize Path in the database seed step.
+
 ---
 
 ## UX principles (don't violate these while building)
 
 1. **Capacity is hidden.** Never show the raw Capacity number or decay % directly in the UI. It's a backend variable that determines ceilings and Good Day math — the player feels its effects, doesn't see the stat.
-2. **Don't show live Good Day % ticking up through the day.** Showing it live turns the day into a progress bar to optimize — the opposite of the intent. Reveal Good Day status at day-rollover or on request, not as a persistent live meter.
+2. **Show XP live — but NOT Good Day %.** These are governed by different rules, don't conflate them:
+   - **Immediate per-action feedback (NEW this session):** every completed Task shows an instant "+X XP" moment (using the tier values from formula #1). A running **"XP today" counter is also shown live**, updating as the day progresses.
+   - **Good Day % stays hidden, revealed only at day-rollover.** Never show the live percentage or a progress bar ticking toward the 80% threshold. Reasoning: Good Day % has a specific pass/fail cliff (80%) that invites gaming if visible live ("just need a bit more to hit 80%"). XP has no such cliff — it simply accumulates with nothing to optimize *toward* — so showing XP live doesn't reintroduce that problem. Don't generalize "hide it live" from Good Day % to XP; they're different cases for a specific, stated reason.
 3. **Every player must have ≥1 active Goal.** For Level 1/Tutorial, offer the "Just Stabilize" Path as a one-tap option — never force blank-page goal authoring on a new player (this is a deliberate accessibility decision, see design doc Section 8.3).
 4. **The "Just Stabilize" Path (MVP's default/starter Path) — seed this as real data:**
    - Area: Physical Health (primary) + Mental Health (secondary)

@@ -49,12 +49,16 @@ export default async function TodayPage() {
       .order("title"),
     supabase
       .from("task_logs")
-      .select("task_id")
+      .select("task_id, xp_awarded")
       .eq("player_id", player.id)
       .eq("completed_date", today),
   ]);
 
   const completedIds = new Set((logs ?? []).map((log) => log.task_id));
+  // Live "XP today" — every completed task's contribution, Growth or Bonus
+  // alike (design doc Section 2.1: immediate feedback, not the same thing
+  // as cumulative_xp, which only counts Growth XP toward the gate).
+  const xpToday = (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0);
   const habits = (tasks ?? []).filter((t) => t.tier === "habit");
   const mainTasks = (tasks ?? []).filter((t) => t.tier === "main_task");
   const chores = (tasks ?? []).filter((t) => t.tier === "chore");
@@ -66,12 +70,17 @@ export default async function TodayPage() {
 
   return (
     <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
-      <header className="w-full max-w-md flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">Today</h1>
-        <Link href="/manage" className="text-sm text-foreground/60 hover:text-foreground">
-          Manage →
-        </Link>
-      </header>
+      <div className="w-full max-w-md flex flex-col gap-1">
+        <header className="flex items-baseline justify-between">
+          <h1 className="text-xl font-semibold">Today</h1>
+          <Link href="/manage" className="text-sm text-foreground/60 hover:text-foreground">
+            Manage →
+          </Link>
+        </header>
+        <p className="text-sm text-foreground/60">
+          XP today: <span className="font-medium text-foreground">{xpToday}</span>
+        </p>
+      </div>
 
       {nivelUp && (
         <div className="w-full max-w-md rounded-lg border border-foreground/20 bg-foreground/5 px-4 py-3 text-center text-sm font-medium">
