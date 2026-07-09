@@ -31,11 +31,14 @@ function NivelBar({ nivel }: { nivel: NivelProgress }) {
       : Math.min(100, (nivel.goodDaysInChapter / nivel.nextNivelThreshold) * 100);
   const remaining =
     nivel.nextNivelThreshold === null ? null : nivel.nextNivelThreshold - nivel.goodDaysInChapter;
+  // The Nivel currently being worked toward (1-indexed) — e.g. "Nivel 1"
+  // while progressing from 0 reached toward the first threshold.
+  const displayNivel = Math.min(nivel.currentNivel + 1, nivel.totalNiveles);
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between text-xs text-foreground/60">
-        <span>Nivel</span>
+        <span>Nivel {displayNivel}</span>
         <span>
           {nivel.currentNivel} / {nivel.totalNiveles}
         </span>
