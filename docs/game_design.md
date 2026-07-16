@@ -516,6 +516,18 @@ Goals are not permanent commitments — treating them as such would reintroduce 
 - Goals can be **paused or abandoned without penalty** — life changes, priorities shift, and a Goal becoming irrelevant isn't a failure. Abandoning a Goal doesn't touch lifetime XP or Good Day counts (consistent with the decay principle in Section 4.3: the system never punishes past progress).
 - A player can hold multiple active Goals simultaneously, across different Main Areas — this is expected, not discouraged, since a genuinely balanced life touches more than one area at once.
 
+### 8.6 AI Goal Decomposition Assistant (Future Direction — Confirmed, Not Yet Built)
+
+A voluntary AI assistant a player can invoke when authoring a custom Goal (Section 8.4's "create my own goal" path) — helping break down a personal goal the player already knows they want, but doesn't know how to structure, into concrete Milestones and Tasks. Working name: "Primer Oficial" or "Bitácora de Rumbo," fitting the nautical tone.
+
+**Explicitly NOT the rejected "AI auditor" idea (Section 6.5's original context) — a fundamentally different relationship to the player:** the earlier AI-auditor idea judged and could reject content the player had already written, which conflicts with the "no judgment, ever" principle protected throughout this design. This is the opposite direction: a **voluntary, requested suggestion** the player can accept as-is, edit freely, or ignore entirely — the same treatment already given to Path templates (Section 8.4: "adopt as-is, edit freely, or ignore entirely"). No gatekeeping, purely optional help.
+
+**Why this is really a more powerful version of something already built, not a new concept:** Path templates (Section 8.4) exist to solve exactly this problem — helping a player who doesn't know where to start — but only for the handful of goal archetypes someone thought to pre-write in advance. An AI assistant generalizes that same benefit to *any* custom goal a player names, not just the ones already anticipated.
+
+**Practical considerations noted, not yet resolved:**
+- **Real ongoing cost, unlike everything else in this design.** The entire app so far is deterministic math — formulas Claude Code implements once and that run free forever. This would require live calls to an AI model (e.g. Claude's API) every time a player requests suggestions — ongoing usage cost, not a one-time build.
+- **Scope timing:** while the core Growth Phase loop (Chapters 1-3, current MVP) is still being validated, adding live AI integration is a genuine scope jump. Noted as a confirmed future direction, not something to build now — same treatment as the pixel-art tooling pipeline (Section 10.7).
+
 ---
 
 ## 9. Mastery Phase (Locked, including numbers)
@@ -589,7 +601,7 @@ MP can be spent on Ship customization (see Section 10) — giving the Exploratio
 
 ---
 
-## 10. Visual Identity — The Ship (Locked concept, implementation details TBD)
+## 10. Visual Identity — The Ship (Locked concept; basic implementation confirmed buildable now, Section 10.7)
 
 The central visual metaphor for the entire game: the player's journey is represented as **building, then sailing, a ship.** This section defines the concept; actual illustration/asset creation is separate downstream work (see note at end of section).
 
@@ -654,13 +666,158 @@ Construction follows the same order in which Areas gain real weight in the Globa
 
 **Fine-grained increments (Locked — resolves the "8 weeks staring at the same hull" pacing problem):** rather than only the 6 milestone-level changes above, every **Nivel** (Section 7.5) and every Capítulo completion triggers a small visual increment on the Ship — e.g. within Milestone I alone (Tutorial + Capítulos 1–3), there are enough Nivel-ups to produce roughly 20+ distinct small visual changes (first ribs appear, ribs complete, first planks, planking half-done, planking complete, etc.) rather than one static scene for 8 weeks straight. The 6 milestone stages above are the "chapters" of construction; Niveles are the frequent small beats that fill the space between them, arriving every 1–8 Good Days depending on how deep into the current Capítulo the player is (Section 7.5's exponential spacing).
 
-### 10.7 Implementation Note
+### 10.7 Implementation Note (Revised — later session)
 
-This section defines *concept*, not production-ready assets. The actual Ship illustration — what it looks like at each construction stage, the specific art style, individual part designs — is downstream creative work, likely done either by (a) commissioning real illustration, or (b) using an external image-generation tool (Midjourney, DALL-E, etc.) fed with a detailed prompt derived from this section, since Claude's own tools in this conversation are constrained to flat, UI-system-bound mockups and can't produce this kind of illustrated game art directly. Once concept art exists, Claude Code would need those assets (or CSS/SVG built to match them) to actually implement the Ship in the app.
+**Correction to earlier guidance:** an earlier build session deferred all Ship implementation on the assumption that finished illustration was required first. That was overly conservative — the flat vector/minimalist art style (Section 10.5) was deliberately chosen *because* Claude Code can build it directly in code (SVG/CSS), without depending on external illustration. A first version of the Ship — simple geometric shapes (lines, rectangles, basic curves) representing each construction stage — is buildable now, and should be refined/replaced later if fancier illustration is ever commissioned. Don't wait for external art to start building a simple version.
+
+**Current decision (confirmed): proceed with flat vector, code-built style for both the Ship and the Avatar (Section 12).** This is what's actually being built right now.
+
+**Possible future art upgrade path — noted for later, not decided (Locked as a reference note only):** Gus explored a more polished pixel-art-with-animation direction (referencing games like a "dark pixel-art adventurer" mood board) as a possible longer-term visual upgrade beyond flat vector. Investigated during this session: a real ecosystem of AI tools now exists specifically for game-ready animated pixel art — e.g. PixelLab (directional sprite rotation, Aseprite plugin), Sprite AI (game-ready sprite sizes with built-in animator), Sprite Fusion (prompt-to-animation, Unity/Godot plugins), God Mode AI (converts a single reference image into full walk/attack/idle animations), and Sprixen (a "Style Lock" feature for keeping multiple game assets visually consistent — relevant here since the Ship, Avatar, and future archetypes all need to share one visual world). **Recommended future workflow if this path is ever pursued:** (1) lock the exact character/ship look using a high-fidelity image generator like Midjourney or Flux for art direction, (2) feed that reference into an animation-specific tool (e.g. God Mode AI or Sprite AI) to produce actual game-ready sprite sheets, (3) hand the resulting sprite sheet files to Claude Code to integrate into the app. **Important tradeoff to remember if revisited:** this path requires a separate paid subscription to one of these tools ($8–50/month range) and manual pipeline operation by Gus — it is not something Claude Code can do on its own, unlike the current flat-vector/code-built approach.
 
 ---
 
-## 11. Healthy Life Target — Reference (Locked, source spec)
+## 11. Nivel Chest System (Locked, including numbers)
+
+Every **Nivel-up** (Section 7.5) awards a **Chest** — the mechanism that actually delivers Ship construction materials and MP, replacing the earlier idea of an invisible/automatic visual trigger with something tangible the player opens and sees.
+
+### 11.1 Why Guaranteed, Not Random (Locked)
+
+An earlier version of this idea considered random chest contents from a pool of possible rewards. This was explicitly rejected: **variable/random rewards use the same psychological mechanism as slot machines** (variable-ratio reinforcement) — the most compulsion-forming reward pattern known in behavioral psychology. Adopting it without care would contradict every other anti-compulsion safeguard already built into this design (gentle decay, no fragile streaks, overflow that becomes irrational to grind). **Chest contents are fully deterministic and pre-designed** — exactly what's needed for that specific point in construction, known and fixed in advance, not drawn from a pool.
+
+### 11.2 Chest Contents — Two Guaranteed Components (Locked)
+
+Every chest contains:
+
+1. **1 guaranteed construction material piece** — exactly what's needed for the Ship stage currently under construction. Not extra, not optional: this *is* the mechanism of the already-locked automatic Growth Phase construction (Section 10), now given a tangible, satisfying delivery moment instead of an invisible background trigger.
+2. **Scaling MP** — grows both within a Capítulo (later Niveles in the same Capítulo give more) and across Capítulos (later Capítulos give substantially more), derived directly from the Nivel-to-Nivel XP gap already defined by the Section 7.5 curve — no new formula invented, just converted to MP.
+
+**MP formula:** `MP per chest = max(2, round(XP_gap_for_this_Nivel × 0.06))`, where `XP_gap_for_this_Nivel` is the difference between this Nivel's cumulative XP threshold and the previous one (Section 7.5).
+
+**Example values (Capítulos 1–3):**
+
+| Capítulo | Material | Niveles | MP per chest (in order) |
+|---|---|---|---|
+| Capítulo 1 | Costilla de roble *(placeholder name)* | 5 | 3, 5, 6, 7, 7 |
+| Capítulo 2 | Tablón de casco *(placeholder name)* | 6 | 3, 6, 7, 8, 9, 9 |
+| Capítulo 3 | Sellador naval *(placeholder name)* | 6 | 3, 6, 7, 8, 9, 9 |
+
+For reference, Capítulo 15's Niveles yield 11–45 MP per chest — the same formula scaling naturally with the much larger XP curve at that point in the game.
+
+### 11.3 MP Is Spendable From Capítulo 1 Onward (Locked — supersedes earlier Mastery-only restriction)
+
+Earlier design (Section 9) treated MP as a Mastery Phase concept, earned and spent only from Capítulo 15 onward. **This is revised: MP is now earned via chests starting Capítulo 1, and is spendable on cosmetics from Capítulo 1 onward too** — not gated behind Mastery Phase. The name "Mastery Points" may no longer fit now that MP spans the whole game, not just Mastery Phase — renaming is flagged as an open item, not yet decided.
+
+**Why spending MP early doesn't reopen the grind-pressure problem this design has protected against everywhere else:** MP only buys **cosmetic style changes to pieces already earned through genuine progress** (e.g. recoloring a plank) — never new construction materials, never accelerated progress. There's no way to grind MP to get *more* Ship or *faster* Ship — only a *different-looking* version of the exact Ship your real progress already earned. This is a fundamentally different risk profile than letting MP buy actual progress would be.
+
+**Explicitly deferred to a later balance-focused session (not yet locked):** exact cosmetic prices, the full catalog of what MP can buy, and per-Capítulo material counts beyond the Capítulo 1–3 examples above. Real playtesting of a working first version will likely inform these numbers better than estimating them abstractly now.
+
+---
+
+## 12. Visual Identity — The Avatar (Locked concept)
+
+**The Avatar is a separate system from the Ship, not a variant of it.** The Ship represents progress (the life being built); the Avatar represents identity (who's building it). This distinction was clarified directly by Gus after an earlier draft of this document conflated the two.
+
+### 12.1 Role in the Player Experience (Locked)
+
+Avatar creation happens **once, at the very start** — before the player begins actually playing, as a dedicated identity moment (standard RPG pattern: character creation up front, then the character persists in the background while gameplay focus shifts elsewhere). After creation, **the Avatar lives as a persistent but secondary element** (a corner badge/icon, always accessible, never the main focus) while daily attention shifts to the Ship — the same way most RPGs work: you don't revisit the character-creation screen every session, but the character always exists and can be reviewed anytime.
+
+### 12.2 Taxonomy (Locked)
+
+**Base identity — chosen once, free, at creation:**
+
+| Category | Notes |
+|---|---|
+| Gender | Binary (male/female) — explicit choice, considered and confirmed as intentional |
+| Skin tone | A palette with meaningful range, not just 2–3 options |
+| Hair style | Independent of color |
+| Hair color | Independent of style — any color/style combination possible |
+| Eye color | — |
+
+**Earnable/purchasable via MP, from Capítulo 1 onward — separate mix-and-match pieces, not combined outfits:**
+
+| Category | Notes |
+|---|---|
+| Top (shirt) | Independent layer |
+| Bottom (pants) | Independent layer |
+| Shoes | Independent layer |
+| Accessories | Hats, glasses, etc. — independent layer, optional |
+
+**Why separate pieces over combined outfits:** more genuine customization depth (mix-and-match rather than picking from whole pre-made looks) — the tradeoff (more art assets needed, one per piece rather than one per full outfit) was explicitly accepted in favor of depth.
+
+**Implementation note:** each category is an independently swappable layer (standard layered-avatar technique — separate SVG/asset per layer, composited together), consistent with the flat vector art style already locked for the Ship (Section 10.5). This is buildable directly in code without needing external illustration, same reasoning as the Ship's Section 10.7 correction above.
+
+### 12.3 Character Archetypes (Confirmed direction, construction deferred, one naming question genuinely open)
+
+At game start, the player chooses an **archetype** that shapes both the Avatar's look and the Ship's design together (e.g. Pirate, Naval Officer, Merchant Captain, Explorer/Cartographer) — a single choice affecting two systems at once.
+
+**Free choice at the start, not gated behind MP (Locked — deliberate, not a placeholder default):** identity agency at the very beginning of the game was judged to matter more than the revenue/engagement value of gating it behind a currency. Reasoning: many players arriving at Level 1 may be dealing with real identity struggles in their actual life; being given genuine power over who they choose to be inside the game was judged likely to make the experience more meaningful, not just more customized. This directly parallels the reasoning that already justified opening MP spending to Capítulo 1 (Section 11.3) — it would have been inconsistent to apply that logic there and not here.
+
+**Construction sequencing (Locked):** build and validate **one solid default archetype first** — full Avatar + Ship design, properly tested — before building the others. All archetypes simultaneously was judged too much upfront construction risk before knowing whether even one lands well. Additional archetypes are a fast follow-up once the default is proven, not a distant Mastery Phase reward.
+
+**Default archetype confirmed: Explorer/Cartographer.** Chosen over Pirate, Naval Officer, and Merchant Captain for three reasons: (1) best fits the tone this design has protected throughout — curiosity, discovery, personal growth — rather than conflict or conquest, which Pirate and Naval Officer both evoke more strongly; (2) connects naturally to an already-existing Main Area (Exploration — the crow's nest/spyglass Ship part, Section 10.2), giving it a built-in thematic anchor with no extra design work; (3) is the most historically neutral option of the four relative to the colonial-association concern in the open question below — an explorer/cartographer carries no specific naval/imperial affiliation the way a nation-specific captain would.
+
+**Open question, explicitly deferred (not yet resolved):** whether archetypes should be framed by **role/profession** (Pirate, Naval Officer, Merchant Captain, Explorer) or could also include **nationality-specific captains** (e.g. "British Captain," "Spanish Captain"). Claude raised a concern during design: the Age of Sail is historically inseparable from European colonial expansion, and naval/merchant captains of that era were the literal instruments of colonization and, in both the British and Spanish cases, the slave trade — a fundamentally different association than a rogue pirate archetype, which carries no state affiliation. Gus heard this concern directly and made an informed decision to set it aside for now ("a mí no me importa"), deferring the actual naming decision to whenever archetypes beyond the first default are actually designed. This note exists so the concern and the decision are both preserved for that future session, rather than the tradeoff being silently forgotten either way.
+
+---
+
+## 13. Onboarding Flow (Locked)
+
+The end-to-end sequence a brand-new player experiences, connecting several previously-separate pieces (Avatar creation, Path selection, the retired Tutorial's narrative role) into one coherent first-run path. Designed only after multiple individual pieces already existed — same lesson as the Growth Phase stress test (Section 16): well-designed pieces in isolation can still leave real gaps at the sequencing level.
+
+### 13.1 Why the Archetype Selection Screen Doesn't Exist Yet (Locked)
+
+Section 12.3 confirmed only **one default archetype** is being built initially, with others added as a fast follow-up later. A "choose your archetype" screen with a single option would be pure friction with no purpose — so this step is simply absent from the flow below. It gets added naturally once a second archetype exists, not before.
+
+### 13.2 The Four-Step Sequence (Locked)
+
+| Step | What happens | Design intent |
+|---|---|---|
+| **1. Narrative hook** | A short framing moment — not a progress gate (Tutorial was already retired, Section 5.1/7.1). E.g. "Somewhere on the coast, a half-built ship waits. It's time to begin." One button: "Begin." | Sets tone and world immediately, costs nothing in friction |
+| **2. Avatar creation** | One consolidated screen (not a multi-screen wizard) — gender, skin tone, hair style, hair color, eye color, with a live preview | Fast, feels like character creation, not a form to fill out |
+| **3. Path/Goal selection** | "Just Stabilize" presented as the primary one-tap option (Section 8.3's accessibility design), with "create my own goal" available below for players who already know what they want | Reuses the already-locked accessibility safeguard — no new blank-page pressure introduced |
+| **4. Transition to play** | A second brief narrative beat connecting creation to real play — e.g. "Your ship awaits. Let's start building." — then straight into the Today screen with real first tasks | Closes the loop between "I just created something" and "now I'm actually playing" |
+
+**Sequencing logic:** identity (Avatar) before intent (Goal) — establishing who you are before declaring what you're pursuing reads more naturally as a narrative progression. Every step is a single screen — no long multi-screen form gauntlet before a new player can actually start playing, which was checked directly against the Section 7.2 accessibility constraint (Chapter 1 must remain genuinely approachable for someone rebuilding or dealing with depression — that applies to onboarding friction just as much as to in-game mechanics).
+
+### 13.3 Step 1 Detail — Narrative Hook (Locked)
+
+**Visual:** reuses the Ship's first construction stage exactly as already described in Section 10.6 — empty dock, lumber piled up, keel just laid, dawn in the background. No new art needed; this is simply that same first frame shown a moment ahead of schedule.
+
+**Copy:** *"Hay un barco por construir. No tiene que ser hoy perfecto — solo tiene que empezar."* (framed intimately, not as an epic call to adventure — checked against the same Section 7.2 accessibility concern: an epic/heroic tone risks feeling heavy if the player is genuinely struggling right now, whereas a soft invitation doesn't ask anything of someone who may not have much to give yet).
+
+**CTA:** single button, "Empezar" — no additional choices or friction at this step.
+
+### 13.4 Step 2 Detail — Avatar Creation (Locked)
+
+**Screen layout:** a large Avatar preview as the central/top element (the thing being built, kept as the visual focus), with selection categories below or alongside — each category shown as a simple row of tappable swatches/carousel options. The preview updates live with every selection.
+
+**Category order:** gender → skin tone → hair style → hair color → eye color. Structural choices first (gender defines the base silhouette), progressively finer detail after.
+
+**No per-category confirmation step** — every choice applies instantly to the live preview. Only one final "Continue" button after all five categories, so the screen feels like playing with the character rather than filling out a sequential form.
+
+**Randomize option (Locked):** a "Random" button generates a full random combination in one tap, for a player who doesn't want to deliberate and just wants to start quickly. Consistent with the Section 7.2/13.2 accessibility principle — minimizing friction for someone who may be in a difficult moment and doesn't have bandwidth for a multi-decision customization process right now.
+
+### 13.5 Step 3 Detail — Path/Goal Selection (Locked)
+
+**Presentation:** two clear options, not a hidden hierarchy — a large primary card ("Start with Just Stabilize — recommended if you're not sure where to begin") and a more understated secondary option below ("I already know what I want — create my own goal").
+
+**If "Just Stabilize" is chosen:** a single confirmation screen showing the 2 pre-loaded Milestones and 3 Tasks (Section 8.4) — not customizable at this point, shown only so the player sees what they're accepting, with a "Confirm" button.
+
+**If "create my own goal" is chosen:** the full Goal → Milestone → Task structure (Section 8) exists, but asking for all of it at this first moment would add real friction for a brand-new player. **Only the goal name and primary Area are requested here** — no Milestones or Tasks yet. Those get added later, once inside the game, at a calmer pace. This preserves agency for a player who already knows what they want, without front-loading the full authoring structure before they've even started playing.
+
+### 13.6 Step 4 Detail — Transition to Play (Locked)
+
+**Visual:** the first moment the Ship (Section 10.6's first construction stage, same as Step 1) and the freshly-created Avatar appear together — standing at the dock, next to the ship. This is the first time the player sees both identity pieces they just built sharing one scene.
+
+**Copy:** *"Tu barco te espera. Vamos a empezar a construirlo, un día a la vez."* — echoes Step 1's language ("no tiene que ser hoy perfecto") without repeating it verbatim, giving a sense of narrative continuity across the flow.
+
+**CTA:** single button, "Ver mi día" — leads directly into the Today screen, with real first tasks already visible (from Just Stabilize or from whatever the player just named).
+
+**Scope note:** this is the only one of the 4 onboarding screens that depends on at least a simple version of the Ship already existing in code (Section 10.7). The other 3 screens (static-Ship narrative hook, Avatar, Path selection) don't depend on anything not already built.
+
+---
+
+## 14. Healthy Life Target — Reference (Locked, source spec)
 
 This is the *endpoint* of the Growth Phase — what Level 15 / Milestone V is building toward. Restated here for reference as numbers get built against it.
 
@@ -672,7 +829,7 @@ This is the *endpoint* of the Growth Phase — what Level 15 / Milestone V is bu
 
 ---
 
-## 12. Open Items — Needs Numbers
+## 15. Open Items — Needs Numbers
 
 Everything below is shape-locked but value-undetermined. This is the active work queue.
 
@@ -687,7 +844,7 @@ Everything below is shape-locked but value-undetermined. This is the active work
 
 ---
 
-## 13. Stress Test — Simulated Player Walkthrough (Validation Record)
+## 16. Stress Test — Simulated Player Walkthrough (Validation Record)
 
 Before designing the Mastery Phase, the full Growth Phase was run through a simulated 28-day playthrough (Tutorial → Level 1) to check whether the locked systems behave correctly *together*, not just individually. This section is a validation record, not a new design layer — it's preserved so future changes can be checked against what was actually verified.
 
@@ -705,7 +862,7 @@ Before designing the Mastery Phase, the full Growth Phase was run through a simu
 
 ---
 
-## 14. Decisions Log
+## 17. Decisions Log
 
 Running record of locked decisions, so we don't relitigate settled ground.
 
@@ -734,4 +891,11 @@ Running record of locked decisions, so we don't relitigate settled ground.
 - **Capacity-per-level (numbers locked):** 0-100 scale per area, smootherstep S-curve from 10 (L1) to 100 (L14-15). All five areas share the same raw Capacity value at each level — Foundation vs. Other area weighting is applied only at the Global Capacity rollup stage (Section 4.2), not baked into different raw values. Decay floor = Capacity × 0.82 (the 18% tier cap from Section 4.3) at every level.
 - **Task Activation Delay (Section 6.5, new):** newly created tasks earn full Growth XP starting the day *after* creation, not the same day — closes a real gap where a player could invent a fake task in the moment purely to earn XP right now. A fixed evening planning window (e.g. "only between 8-10pm") was explicitly proposed by Gus, considered, and rejected — it would punish a single missed window the same way a fragile streak does, contradicting the grace-window/rolling-rate philosophy used everywhere else in this design. Simplified to a clock-agnostic rule: created Day N → full XP from Day N+1. Same-day-completed tasks aren't discarded — they route through the existing Bonus XP channel (Section 6.1, already used for Side Quests) rather than full Growth XP. Path template tasks (e.g. "Just Stabilize") are exempt, since they're pre-designed, not fabricated in the moment — preserves the fast first-reward design for new Tutorial players. New system Habit "Planned tomorrow" (standard Habit-tier XP, always available, no Milestone needed) reinforces the evening-planning ritual organically instead of through a hard time-lock.
 - **Tutorial retired; Nivel switched from Good-Day-driven to XP-driven; Chapter-up gate switched from hybrid (XP+GD) to Good-Day-only (Section 7.5, revised):** raised by Gus as a UX concern — after building the immediate XP feedback + "XP today" counter (Section 2.1), it felt wrong that a brand-new player's Nivel bar stayed empty through the whole Tutorial phase (Good-Day-only, no XP threshold) despite actively earning XP from their very first task. Proposed and confirmed: split the two motivators cleanly — **Nivel now tracks the Effort axis (cumulative XP within the current Chapter)**, **Chapter-up now tracks the Balance axis only (lifetime Good Days + rolling rate, no XP condition)**. This made Tutorial redundant (its two justifications — no XP-gating, fast first reward — are now inherently true of Chapter 1) and it was retired; players start at Chapter 1 directly. Dropping XP from the Chapter gate was checked against the original "front-loading" concern that motivated the hybrid gate in the first place — judged safe because Good Day % (Section 6.2) already requires real Habit + Main Task completion to clear 80%, so the effort requirement isn't actually gone, just no longer double-counted as a separate condition. The Nivel formula's coefficient was recalibrated for XP-sized magnitudes (0.24, down from 1.6) since the original was tuned for Good-Day-sized numbers and would have produced absurd results (34 Niveles for Chapter 1) applied directly to XP. Nivel-checking also moved from the next-day Good Day backfill to real time (checked at the moment of task completion), since XP — unlike Good Days — is available immediately. Also discussed and accepted as an intentional consequence, not a flaw: a player can now max out Nivel before the Chapter's Good Day gate clears (or vice versa) — the two axes are meant to move independently, and both progress bars stay visible together so the causality is never hidden.
+- **Game feel research + Nivel Chest System (Sections 11-12, new):** Gus raised a legitimate concern that the validated mechanics still "felt like a reminders app." Researched "game juice" (audiovisual feedback richness per action) and Habitica (closest real precedent — habit-tracker-as-RPG) for concrete grounding. Key adopted lesson: an always-present visual element matters more than any single polish detail — the Ship's flat-vector art style was corrected to be buildable in code now (Section 10.7), not deferred pending external illustration as earlier guidance mistakenly assumed. Key explicitly rejected lesson: Habitica's HP/death punitive mechanics contradict this game's core non-punitive philosophy — juice must come from feedback richness, not from danger/loss. **Nivel Chest System locked:** every Nivel-up awards a chest with guaranteed (not random) contents — 1 construction material piece + scaling MP, derived directly from the already-locked Nivel XP-gap curve. Random/variable rewards were explicitly considered and rejected as using the same variable-ratio reinforcement mechanism as slot machines, which would contradict every other anti-compulsion safeguard already built into this design. **MP scope expanded:** now earned and spendable from Capítulo 1 onward (previously Mastery-Phase-only) — safe to allow early spending because MP only buys cosmetic re-styling of already-earned pieces, never new progress or acceleration, so no grind-for-more-Ship incentive is created. Exact prices and full purchase catalog explicitly deferred to a later balance-focused session, informed by actual playtesting rather than abstract estimation.
+- **Avatar system (Section 12, new) — confirmed as separate from the Ship, not a variant of it:** the Ship represents progress; the Avatar represents identity. Created once at the very start (standard RPG character-creation pattern), then persists as a secondary, always-accessible element while daily focus shifts to the Ship. Base identity (gender — binary, explicitly confirmed intentional — skin tone, hair style/color, eye color) is free and chosen once. Clothing (top/bottom/shoes/accessories) is earnable via MP from Capítulo 1 onward, built as independent mix-and-match layers rather than combined outfits — more customization depth accepted at the cost of more art assets needed. Same flat-vector, code-buildable approach as the Ship.
+- **Character Archetypes (Section 12.3, new):** at game start, players choose an archetype (e.g. Pirate, Naval Officer, Merchant Captain, Explorer) shaping both Avatar and Ship together. Confirmed free at the start, not MP-gated — identity agency for a potentially identity-struggling new player was judged more valuable than gating it as a paid unlock, directly consistent with the reasoning that already opened MP spending to Capítulo 1. Construction sequencing: one default archetype built and validated first, others added as a fast follow-up, not a distant reward. **One open question deliberately deferred, not resolved:** whether archetype naming should stay role/profession-based or could include nationality-specific captains (e.g. "British Captain," "Spanish Captain"). Claude raised a concern that Age-of-Sail naval captains were literal instruments of colonization and, in both British and Spanish cases, the slave trade — a different association than the state-unaffiliated Pirate archetype. Gus heard the concern directly and chose to set it aside for now, deferring the actual decision to whenever archetypes beyond the first are designed — both the concern and the decision are preserved here so neither gets silently lost.
+- **Future art upgrade path noted (Section 10.7):** Gus explored a more polished, animated pixel-art visual direction as a possible future upgrade beyond flat vector. A real ecosystem of specialized AI pixel-art/animation tools was researched and documented (PixelLab, Sprite AI, Sprite Fusion, God Mode AI, Sprixen) along with a recommended future workflow (static reference art → animation tool → sprite sheet → Claude Code integration). Explicitly not decided or scheduled — current confirmed direction remains flat vector, code-built by Claude Code, for both Ship and Avatar. Noted so this path isn't lost if revisited later.
+- **Onboarding Flow (Section 13, new):** designed only after Avatar, Path selection, and the retired Tutorial already existed separately — the same lesson as the Growth Phase stress test, that well-designed individual pieces can still leave sequencing gaps. Four-step flow locked: (1) short narrative hook, not a progress gate, (2) single-screen Avatar creation, (3) Path/Goal selection with "Just Stabilize" as the primary one-tap option, (4) brief narrative transition into the Today screen. The archetype-selection screen is deliberately absent from this flow for now, since only one default archetype exists (Section 12.3) — a single-option selector would be pure friction. Every step kept to one screen, checked explicitly against the Section 7.2 accessibility constraint that Chapter 1 must stay approachable for someone rebuilding or dealing with depression — onboarding friction was treated as seriously as in-game mechanical friction.
+- **AI Goal Decomposition Assistant (Section 8.6, new) — confirmed future direction, not yet built:** a voluntary AI assistant to help a player break a custom Goal (Section 8.4) into Milestones and Tasks when they know what they want but not how to structure it. Explicitly distinguished from the earlier rejected "AI auditor" idea — this suggests, never judges or rejects content, matching the same "accept as-is, edit freely, or ignore" treatment already given to Path templates. Understood as a more general version of what Path templates already do, extended to any custom goal rather than only pre-written archetypes. Two practical considerations noted for whenever this is revisited: it introduces real ongoing AI-usage cost (unlike the rest of this design, which is one-time-built deterministic math), and it's a genuine scope jump while the core Growth Phase loop is still being validated — deferred with the same treatment as the pixel-art tooling pipeline (Section 10.7), not scheduled yet.
+- **Second pre-build audit (before returning to Claude Code after the Chest/Avatar/Onboarding session):** verified no duplicate section numbers (clean this time), no broken cross-references (systematically checked every "Section X.Y" reference against actual headers — all valid), and confirmed the Nivel Chest System's (Section 11) example MP values are numerically consistent with the current XP-driven Nivel thresholds (Section 7.5) — both use the same Chapter 1/2/3 cumulative XP figures (450/700/700, thresholds 47-450 / 57-700 / 57-700). One stale header fixed: Section 10's title still read "implementation details TBD" despite Section 10.7 confirming a basic version is buildable now — corrected. Section 15 (Open Items) and the historical Decisions Log entries still use pre-rename terminology (Level/Tutorial instead of Chapter) — left as-is since they're clearly historical record of already-resolved work, not active spec, consistent with how Section 5 was already handled (marked Superseded rather than rewritten).
 

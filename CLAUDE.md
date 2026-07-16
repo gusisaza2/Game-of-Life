@@ -32,7 +32,7 @@ Do NOT implement the full 15-chapter system, Mastery Phase, or all 5 Main Areas'
 
 **Explicitly OUT of scope until Phase 1 is working and tested:**
 - Chapters 4–15, Mastery Phase, MP/Titles/Tiers, multiple simultaneous Goals, Side Quest bonus-XP routing, overflow XP curve (can hardcode "no overflow yet" — just cap XP at the daily ceiling for now)
-- **The Ship visual system (design doc Section 10) is NOT ready to build yet.** Concept is locked, but no illustration assets exist and the color palette isn't finalized. Do not attempt to render Ship graphics — use a simple placeholder (a toast/banner reading "Nivel up!" or "Chapter complete!") wherever a visual increment would eventually go. This avoids building throwaway placeholder art that would need to be discarded once real assets exist.
+- **The Ship visual system (design doc Section 10) has a corrected implementation note — read Section 10.7.** A basic version (simple flat-vector SVG shapes per construction stage) is buildable directly in code now; it does NOT require external illustration first. That said, it's still not part of the current Phase 1 MVP build order below — use a simple placeholder (a toast/banner reading "Nivel up!" or "Chapter complete!") for now, and build the real Ship as a deliberate next phase, not because it's blocked on missing assets.
 
 ### Terminology update (this session)
 
@@ -258,6 +258,17 @@ else:
 1. Update all player-facing UI text: "Level" → "Chapter" (no database column rename)
 2. Check whether micro-milestone logic (old Section 8) was already implemented — if yes, remove it; if no, skip straight to step 3
 3. Implement the new nested Nivel system (Section 8 above) — add the `last_nivel_reached` tracking field, compute Nivel thresholds per the formula, fire a simple placeholder celebration (toast/banner) on Nivel-up — no Ship graphics yet
-4. Do NOT touch or attempt to build anything from design doc Section 10 (The Ship) — that's explicitly deferred until real illustration assets exist
+
+## New design additions (design doc Sections 11-13) — NOT yet ready to build
+
+Three new systems were designed in a later session:
+
+1. **Nivel Chest System** (design doc Section 11) — every Nivel-up awards a chest with guaranteed construction materials + scaling MP. Exact formula is locked (see Section 11), but exact cosmetic prices and the full purchase catalog are explicitly deferred to a dedicated balance-focused session.
+2. **Avatar system** (design doc Section 12) — separate from the Ship, human character customization. Full taxonomy is locked (gender, skin tone, hair style/color, eye color as free base identity; top/bottom/shoes/accessories as MP-earnable separate layers). **Default Character Archetype is now confirmed: Explorer/Cartographer** (Section 12.3) — this unblocks building a concrete first Avatar + Ship design once this phase of work starts. Other archetypes (Pirate, Naval Officer, Merchant Captain) are deferred as fast follow-ups after the default is validated — do not build them yet.
+3. **Onboarding Flow** (design doc Section 13) — the full 4-step new-player sequence (narrative hook → Avatar creation → Path/Goal selection → transition to Today) is fully detailed, screen-by-screen, including exact copy. Not yet implemented.
+
+**Do not implement any of these three yet.** All have concrete formulas/specs locked, but building them now would mean building on top of pricing/catalog decisions (#1) or a Ship implementation (#2, #3 — the Onboarding Flow's Step 4 specifically needs at least a basic Ship to exist) that hasn't been started. Flag this to Gus if asked to build these — check whether the Ship's basic version (see note below) and the balance-focused pricing session have happened before proceeding.
+
+**Ship implementation status — corrected, do not follow outdated guidance:** an earlier instruction in this file said to defer all Ship rendering until external illustration assets exist. **That guidance was wrong and has been corrected** (design doc Section 10.7) — the flat vector art style was deliberately chosen because Claude Code can build it directly in code (SVG/CSS) right now, without needing external illustration. If/when Ship or Avatar visuals become the active task, build simple geometric SVG shapes directly — don't wait for external art, and don't defer this the way earlier guidance mistakenly suggested.
 
 Ask before adding anything not listed above. When in doubt about a formula or a rule not covered here, check `docs/game_design.md` before guessing.

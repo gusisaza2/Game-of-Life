@@ -8,6 +8,7 @@ import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
+import { Ship } from "@/components/Ship";
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -81,6 +82,8 @@ export default async function TodayPage() {
           XP today: <span className="font-medium text-foreground">{xpToday}</span>
         </p>
       </div>
+
+      <Ship currentLevel={currentLevel} cumulativeXp={cumulativeXp} />
 
       <LevelProgress
         levelLabel={levelLabel}
