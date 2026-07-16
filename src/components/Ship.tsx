@@ -5,13 +5,14 @@ import { getShipStage } from "@/lib/ship";
 // MVP covers only Milestone I's construction: empty dock -> keel laid ->
 // ribs appearing one by one as the player progresses through Chapters 1-3.
 
-const RIB_X_START = 185;
+const DOCK_TOP_Y = 130;
+const RIB_X_START = 165;
 const RIB_X_END = 355;
-const KEEL_Y = 128;
-const RIB_TOP_Y = 55;
+const KEEL_Y = DOCK_TOP_Y; // Keel sits directly on the dock surface, not floating above it.
+const RIB_TOP_Y = 50;
 
 function ribPath(x: number): string {
-  return `M ${x - 16} ${KEEL_Y} Q ${x} ${RIB_TOP_Y} ${x + 16} ${KEEL_Y}`;
+  return `M ${x - 18} ${KEEL_Y} Q ${x} ${RIB_TOP_Y} ${x + 18} ${KEEL_Y}`;
 }
 
 export function Ship({
@@ -44,34 +45,37 @@ export function Ship({
           </linearGradient>
         </defs>
 
-        <rect x="0" y="0" width="400" height="150" fill="url(#ship-sky)" />
-        <rect x="0" y="150" width="400" height="70" fill="#7fb3c9" />
+        <rect x="0" y="0" width="400" height="148" fill="url(#ship-sky)" />
+        <rect x="0" y="148" width="400" height="72" fill="#7fb3c9" />
         <path
-          d="M0 162 Q20 156 40 162 T80 162 T120 162 T160 162 T200 162 T240 162 T280 162 T320 162 T360 162 T400 162"
+          d="M0 160 Q20 154 40 160 T80 160 T120 160 T160 160 T200 160 T240 160 T280 160 T320 160 T360 160 T400 160"
           fill="none"
           stroke="#6ba3ba"
           strokeWidth="2"
           opacity="0.6"
         />
 
-        {/* dock */}
-        <rect x="20" y="140" width="8" height="60" fill="#8a5a3b" />
-        <rect x="120" y="140" width="8" height="60" fill="#8a5a3b" />
-        <rect x="10" y="128" width="130" height="14" fill="#a5713f" />
+        {/* dock — a single continuous platform spanning the whole build
+            area, so the keel/ribs clearly rest on solid ground instead of
+            floating disconnected next to a shorter dock */}
+        <rect x="10" y={DOCK_TOP_Y} width="380" height="14" fill="#9c7a52" />
+        {[20, 90, 160, 230, 300, 370].map((x) => (
+          <rect key={x} x={x} y={DOCK_TOP_Y + 14} width="8" height="56" fill="#7a5a3a" />
+        ))}
 
-        {/* lumber pile */}
-        <rect x="30" y="108" width="50" height="8" rx="2" fill="#9c6b3e" />
-        <rect x="35" y="98" width="45" height="8" rx="2" fill="#b17a45" />
-        <rect x="30" y="88" width="40" height="8" rx="2" fill="#9c6b3e" />
+        {/* lumber pile, off to the side so it doesn't clash with the keel/ribs */}
+        <rect x="25" y="110" width="50" height="8" rx="2" fill="#9c6b3e" />
+        <rect x="30" y="100" width="45" height="8" rx="2" fill="#b17a45" />
+        <rect x="25" y="90" width="40" height="8" rx="2" fill="#9c6b3e" />
 
-        {/* keel */}
+        {/* keel — sits directly on top of the dock, no gap */}
         <rect
-          x={RIB_X_START - 20}
-          y={KEEL_Y - 4}
-          width={RIB_X_END - RIB_X_START + 40}
+          x={RIB_X_START - 15}
+          y={KEEL_Y - 8}
+          width={RIB_X_END - RIB_X_START + 30}
           height="8"
           rx="3"
-          fill="#7a4f2e"
+          fill="#6b4226"
         />
 
         {/* ribs, revealed one by one as construction progresses */}
@@ -80,8 +84,8 @@ export function Ship({
             key={i}
             d={ribPath(x)}
             fill="none"
-            stroke="#8a5a3b"
-            strokeWidth="6"
+            stroke="#7a5a3a"
+            strokeWidth="7"
             strokeLinecap="round"
           />
         ))}
