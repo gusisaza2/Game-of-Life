@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { toggleTaskCompletion } from "@/app/actions";
+import { areaColor } from "@/lib/area-colors";
 
 type Task = {
   id: string;
   title: string;
+  areaName?: string;
 };
 
 type XpFlash = {
@@ -27,6 +29,7 @@ function TaskItem({
 }) {
   const [isPending, startTransition] = useTransition();
   const [flash, setFlash] = useState<XpFlash | null>(null);
+  const color = areaColor(task.areaName);
 
   function handleChange() {
     startTransition(async () => {
@@ -40,25 +43,37 @@ function TaskItem({
 
   return (
     <li className="flex flex-col gap-1">
-      <label className="flex items-center gap-3 rounded-lg border border-foreground/10 px-4 py-3 cursor-pointer hover:bg-foreground/5">
+      <label
+        className="group flex items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.02] pl-3 pr-4 py-3 cursor-pointer transition-colors hover:bg-foreground/[0.05]"
+        style={{ borderLeft: `3px solid ${color.accent}` }}
+      >
+        <span
+          aria-hidden
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: color.accent }}
+        />
         <input
           type="checkbox"
           checked={completed}
           disabled={isPending}
           onChange={handleChange}
-          className="h-4 w-4"
+          className="h-4 w-4 shrink-0 accent-foreground/80"
         />
-        <span className={completed ? "line-through text-foreground/40" : ""}>
+        <span className={completed ? "line-through text-foreground/35" : "text-foreground/90"}>
           {task.title}
         </span>
         {flash && (
-          <span className="ml-auto text-xs font-medium text-foreground/70">
+          <span
+            key={flash.xpAwarded + flash.xpType}
+            className="xp-flash ml-auto shrink-0 text-xs font-semibold tabular-nums"
+            style={{ color: flash.xpType === "bonus" ? "var(--accent-effort)" : color.accent }}
+          >
             +{flash.xpAwarded} {flash.xpType === "bonus" ? "Bonus XP" : "XP"}
           </span>
         )}
       </label>
       {flash?.nivelUp && (
-        <p className="px-4 text-xs font-medium text-foreground/70">
+        <p className="xp-flash px-4 text-xs font-medium" style={{ color: "var(--accent-effort)" }}>
           ¡Nivel up! {flash.nivelUp.nivelReached} / {flash.nivelUp.totalNiveles}
         </p>
       )}
@@ -81,11 +96,18 @@ export function TaskSection({
 }) {
   if (tasks.length === 0) return null;
 
+  const doneCount = tasks.filter((t) => completedIds.has(t.id)).length;
+
   return (
     <section className="w-full max-w-md">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/60 mb-2">
-        {title}
-      </h2>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
+          {title}
+        </h2>
+        <span className="text-xs tabular-nums text-foreground/35">
+          {doneCount}/{tasks.length}
+        </span>
+      </div>
       <ul className="flex flex-col gap-2">
         {tasks.map((task) => (
           <TaskItem

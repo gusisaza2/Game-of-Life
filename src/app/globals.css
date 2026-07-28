@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Good Days (Balance axis) vs Nivel (Effort axis) get distinct accent
+     colors so the two independent progress signals read as different at a
+     glance (design doc Section 2: two independent motivators). */
+  --accent-balance: #4c6ef5;
+  --accent-effort: #e2a53a;
 }
 
 @theme inline {
@@ -16,11 +21,51 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --accent-balance: #7c96ff;
+    --accent-effort: #f0bb5c;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@keyframes xp-flash-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes xp-today-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.xp-flash {
+  animation: xp-flash-in 220ms ease-out;
+}
+
+.xp-today-pop {
+  animation: xp-today-pop 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-flash,
+  .xp-today-pop {
+    animation: none;
+  }
 }

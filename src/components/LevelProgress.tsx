@@ -7,17 +7,17 @@ function ProgressBar({ label, progress }: { label: string; progress: ProgressIte
     Number.isInteger(progress.current) ? progress.current : progress.current.toFixed(2);
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between text-xs text-foreground/60">
-        <span>{label}</span>
-        <span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between text-xs text-foreground/55">
+        <span className="font-medium text-foreground/70">{label}</span>
+        <span className="tabular-nums">
           {current} / {progress.threshold}
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-foreground/10">
+      <div className="h-2 w-full rounded-full bg-foreground/10">
         <div
-          className="h-full rounded-full bg-foreground/70"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%`, backgroundColor: "var(--accent-balance)" }}
         />
       </div>
     </div>
@@ -40,20 +40,20 @@ function NivelBar({ nivel }: { nivel: NivelProgress }) {
   const displayNivel = Math.min(nivel.currentNivel + 1, nivel.totalNiveles);
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between text-xs text-foreground/60">
-        <span>Nivel {displayNivel}</span>
-        <span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between text-xs text-foreground/55">
+        <span className="font-medium text-foreground/70">Nivel {displayNivel}</span>
+        <span className="tabular-nums">
           {nivel.currentNivel} / {nivel.totalNiveles}
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-foreground/10">
+      <div className="h-2 w-full rounded-full bg-foreground/10">
         <div
-          className="h-full rounded-full bg-foreground/70"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%`, backgroundColor: "var(--accent-effort)" }}
         />
       </div>
-      <p className="text-xs text-foreground/50">
+      <p className="text-xs text-foreground/45">
         {remaining === null
           ? "Último Nivel de este Capítulo"
           : `${formatXp(remaining)} XP para el próximo Nivel`}
@@ -63,22 +63,14 @@ function NivelBar({ nivel }: { nivel: NivelProgress }) {
 }
 
 export function LevelProgress({
-  levelLabel,
-  milestoneName,
   goodDays,
   nivel,
 }: {
-  levelLabel: string;
-  milestoneName: string | null;
   goodDays: ProgressItem | null;
   nivel: NivelProgress | null;
 }) {
   return (
-    <div className="w-full max-w-md flex flex-col gap-3">
-      <p className="text-sm font-medium">
-        {levelLabel}
-        {milestoneName && <span className="text-foreground/60"> · {milestoneName}</span>}
-      </p>
+    <div className="flex flex-col gap-3">
       {goodDays && <ProgressBar label="Good Days" progress={goodDays} />}
       {nivel && <NivelBar nivel={nivel} />}
     </div>

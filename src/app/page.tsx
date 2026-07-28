@@ -8,7 +8,9 @@ import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
-import { Ship } from "@/components/Ship";
+// Ship is deliberately not rendered on Today right now — its visual design
+// is a separate, later pass (see CLAUDE.md). The component itself is
+// untouched; this screen just doesn't mount it tonight.
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -41,10 +43,10 @@ export default async function TodayPage() {
   // Decay has no cron yet — recompute on-read (CLAUDE.md build order).
   await refreshAllAreaCapacities(player.id, currentLevel, today, earliestDate);
 
-  const [{ data: tasks }, { data: logs }] = await Promise.all([
+  const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, tier")
+      .select("id, title, tier, area_id")
       .eq("player_id", player.id)
       .eq("is_active", true)
       .order("title"),
@@ -53,16 +55,23 @@ export default async function TodayPage() {
       .select("task_id, xp_awarded")
       .eq("player_id", player.id)
       .eq("completed_date", today),
+    supabase.from("areas").select("id, name"),
   ]);
+
+  const areaNameById = new Map((areas ?? []).map((a) => [a.id, a.name as string]));
+  const tasksWithArea = (tasks ?? []).map((t) => ({
+    ...t,
+    areaName: areaNameById.get(t.area_id),
+  }));
 
   const completedIds = new Set((logs ?? []).map((log) => log.task_id));
   // Live "XP today" — every completed task's contribution, Growth or Bonus
   // alike (design doc Section 2.1: immediate feedback, not the same thing
   // as cumulative_xp, which only counts Growth XP toward Nivel).
   const xpToday = (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0);
-  const habits = (tasks ?? []).filter((t) => t.tier === "habit");
-  const mainTasks = (tasks ?? []).filter((t) => t.tier === "main_task");
-  const chores = (tasks ?? []).filter((t) => t.tier === "chore");
+  const habits = tasksWithArea.filter((t) => t.tier === "habit");
+  const mainTasks = tasksWithArea.filter((t) => t.tier === "main_task");
+  const chores = tasksWithArea.filter((t) => t.tier === "chore");
 
   const levelLabel = `Chapter ${currentLevel}`;
   const milestoneName = milestoneNameForLevel(currentLevel);
@@ -70,58 +79,79 @@ export default async function TodayPage() {
   const nivelProgress = getNivelProgress(currentLevel, cumulativeXp);
 
   return (
-    <main className="flex-1 flex flex-col items-center gap-8 p-8 sm:p-16">
-      <div className="w-full max-w-md flex flex-col gap-1">
+    <main className="flex-1 flex flex-col items-center gap-6 p-6 sm:p-12">
+      <div className="w-full max-w-md flex flex-col gap-5">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-xl font-semibold">Today</h1>
-          <Link href="/manage" className="text-sm text-foreground/60 hover:text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
+          <Link
+            href="/manage"
+            className="text-sm text-foreground/50 hover:text-foreground transition-colors"
+          >
             Manage →
           </Link>
         </header>
-        <p className="text-sm text-foreground/60">
-          XP today: <span className="font-medium text-foreground">{xpToday}</span>
-        </p>
+
+        <div className="flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-5">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-foreground/45">
+              XP today
+            </span>
+            <span
+              key={xpToday}
+              className="text-2xl font-semibold tabular-nums xp-today-pop"
+            >
+              {formatXp(xpToday)}
+            </span>
+          </div>
+
+          <div className="h-px bg-foreground/10" />
+
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium">
+              {levelLabel}
+              {milestoneName && <span className="text-foreground/50"> · {milestoneName}</span>}
+            </p>
+            {yesterdayGoodDay && (
+              <p className="text-xs text-foreground/45">
+                Yesterday:{" "}
+                <span className="text-foreground/70">
+                  {yesterdayGoodDay.isGoodDay ? "Good Day ✓" : "Not a Good Day"}
+                </span>
+              </p>
+            )}
+          </div>
+
+          <LevelProgress goodDays={progress.goodDays} nivel={nivelProgress} />
+        </div>
       </div>
 
-      <Ship currentLevel={currentLevel} cumulativeXp={cumulativeXp} />
-
-      <LevelProgress
-        levelLabel={levelLabel}
-        milestoneName={milestoneName}
-        goodDays={progress.goodDays}
-        nivel={nivelProgress}
-      />
-
-      {yesterdayGoodDay && (
-        <p className="w-full max-w-md text-sm text-foreground/60">
-          Yesterday:{" "}
-          <span className="font-medium text-foreground">
-            {yesterdayGoodDay.isGoodDay ? "Good Day ✓" : "Not a Good Day"}
-          </span>
-        </p>
-      )}
-
-      <TaskSection
-        title="Habits"
-        tasks={habits}
-        completedIds={completedIds}
-        playerId={player.id}
-        today={today}
-      />
-      <TaskSection
-        title="Main Tasks"
-        tasks={mainTasks}
-        completedIds={completedIds}
-        playerId={player.id}
-        today={today}
-      />
-      <TaskSection
-        title="Chores"
-        tasks={chores}
-        completedIds={completedIds}
-        playerId={player.id}
-        today={today}
-      />
+      <div className="w-full max-w-md flex flex-col gap-6">
+        <TaskSection
+          title="Habits"
+          tasks={habits}
+          completedIds={completedIds}
+          playerId={player.id}
+          today={today}
+        />
+        <TaskSection
+          title="Main Tasks"
+          tasks={mainTasks}
+          completedIds={completedIds}
+          playerId={player.id}
+          today={today}
+        />
+        <TaskSection
+          title="Chores"
+          tasks={chores}
+          completedIds={completedIds}
+          playerId={player.id}
+          today={today}
+        />
+      </div>
     </main>
   );
+}
+
+function formatXp(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
