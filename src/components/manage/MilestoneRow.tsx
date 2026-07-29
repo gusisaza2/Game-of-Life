@@ -1,0 +1,96 @@
+"use client";
+
+import { useState } from "react";
+import { TaskRow } from "./TaskRow";
+import { MilestoneTaskForm } from "./MilestoneTaskForm";
+
+type Area = { id: string; name: string };
+type MilestoneOption = { id: string; label: string };
+type Task = {
+  id: string;
+  title: string;
+  tier: string;
+  area_id: string;
+  recurrence: string;
+  is_active: boolean;
+  milestone_id: string | null;
+};
+type Milestone = { id: string; order_index: number; title: string; status: string };
+
+// Tasks are opt-in, not on-screen by default: adding one is a deliberate
+// "+ Add task" click, and an existing list only shows once you ask to see
+// it — the milestone line itself stays the default, uncluttered view.
+export function MilestoneRow({
+  milestone,
+  taskRows,
+  areas,
+  canAddTask,
+  playerId,
+  defaultAreaId,
+}: {
+  milestone: Milestone;
+  taskRows: { task: Task; milestoneOptions: MilestoneOption[] }[];
+  areas: Area[];
+  canAddTask: boolean;
+  playerId: string;
+  defaultAreaId: string;
+}) {
+  const [showTasks, setShowTasks] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  return (
+    <li className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-foreground/80">
+          {milestone.order_index}. {milestone.title}
+          {milestone.status === "completed" && " ✓"}
+        </p>
+        <div className="flex shrink-0 gap-3 text-xs">
+          {taskRows.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowTasks((v) => !v)}
+              className="text-foreground/45 hover:text-foreground"
+            >
+              {showTasks ? "Hide tasks" : `Tasks (${taskRows.length})`}
+            </button>
+          )}
+          {canAddTask && (
+            <button
+              type="button"
+              onClick={() => setShowAddForm((v) => !v)}
+              className="text-foreground/45 hover:text-foreground"
+            >
+              {showAddForm ? "Cancel" : "+ Add task"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showTasks && taskRows.length > 0 && (
+        <ul className="flex flex-col gap-1 pl-3">
+          {taskRows.map(({ task, milestoneOptions }) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              areas={areas}
+              milestoneOptions={milestoneOptions}
+              milestoneLabel={null}
+            />
+          ))}
+        </ul>
+      )}
+
+      {showAddForm && (
+        <div className="pl-3">
+          <MilestoneTaskForm
+            milestoneId={milestone.id}
+            playerId={playerId}
+            areas={areas}
+            defaultAreaId={defaultAreaId}
+          />
+        </div>
+      )}
+    </li>
+  );
+}

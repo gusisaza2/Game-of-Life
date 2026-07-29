@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { GoalForm } from "@/components/manage/GoalForm";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
-import { MilestoneTaskForm } from "@/components/manage/MilestoneTaskForm";
+import { MilestoneRow } from "@/components/manage/MilestoneRow";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
 import { setGoalStatus } from "./actions";
@@ -143,39 +143,20 @@ export default async function ManagePage() {
               {[...goal.milestones]
                 .sort((a, b) => a.order_index - b.order_index)
                 .map((milestone) => {
-                  const milestoneTasks = tasksByMilestoneId.get(milestone.id) ?? [];
+                  const taskRows = (tasksByMilestoneId.get(milestone.id) ?? []).map((task) => ({
+                    task,
+                    milestoneOptions: milestoneOptionsFor(task),
+                  }));
                   return (
-                    <li key={milestone.id} className="flex flex-col gap-1.5">
-                      <p className="text-sm text-foreground/80">
-                        {milestone.order_index}. {milestone.title}
-                        {milestone.status === "completed" && " ✓"}
-                      </p>
-
-                      {milestoneTasks.length > 0 && (
-                        <ul className="flex flex-col gap-1 pl-3">
-                          {milestoneTasks.map((task) => (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              areas={areas ?? []}
-                              milestoneOptions={milestoneOptionsFor(task)}
-                              milestoneLabel={null}
-                            />
-                          ))}
-                        </ul>
-                      )}
-
-                      {goal.status === "active" && milestone.status === "active" && (
-                        <div className="pl-3">
-                          <MilestoneTaskForm
-                            milestoneId={milestone.id}
-                            playerId={player.id}
-                            areas={areas ?? []}
-                            defaultAreaId={goal.area_id}
-                          />
-                        </div>
-                      )}
-                    </li>
+                    <MilestoneRow
+                      key={milestone.id}
+                      milestone={milestone}
+                      taskRows={taskRows}
+                      areas={areas ?? []}
+                      canAddTask={goal.status === "active" && milestone.status === "active"}
+                      playerId={player.id}
+                      defaultAreaId={goal.area_id}
+                    />
                   );
                 })}
             </ul>
