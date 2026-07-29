@@ -77,6 +77,7 @@ export function MilestoneRow({
               areas={areas}
               milestoneOptions={milestoneOptions}
               milestoneLabel={null}
+              showTierBadge
             />
           ))}
         </ul>

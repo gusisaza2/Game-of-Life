@@ -8,13 +8,9 @@ import { TaskRow } from "@/components/manage/TaskRow";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { areaColor } from "@/lib/area-colors";
 import { getTodayDateString } from "@/lib/today";
+import { TIER_LABELS } from "@/lib/task-tiers";
+import { Badge } from "@/components/Badge";
 import { setGoalStatus } from "./actions";
-
-const TIER_LABELS: Record<string, string> = {
-  habit: "Habit",
-  main_task: "Main Task",
-  chore: "Chore",
-};
 
 export default async function ManagePage() {
   const supabase = await createClient();
@@ -124,11 +120,13 @@ export default async function ManagePage() {
             style={{ borderLeft: `3px solid ${areaColor(areasById.get(goal.area_id)).accent}` }}
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{goal.title}</p>
-                <p className="text-xs text-foreground/60">
-                  {areasById.get(goal.area_id)} · {goal.status}
-                </p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <p className="font-medium">{goal.title}</p>
+                  <p className="text-xs text-foreground/60">{areasById.get(goal.area_id)}</p>
+                </div>
+                {goal.status === "completed" && <Badge tone="effort">Completed</Badge>}
+                {goal.status === "abandoned" && <Badge tone="muted">Abandoned</Badge>}
               </div>
               {goal.status === "active" && (
                 <div className="flex gap-2">

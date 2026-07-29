@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { updateTask, setTaskActive, scheduleTaskActivation } from "@/app/manage/actions";
 import { areaColor } from "@/lib/area-colors";
+import { TIER_LABELS } from "@/lib/task-tiers";
+import { Badge } from "@/components/Badge";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -22,11 +24,13 @@ export function TaskRow({
   areas,
   milestoneOptions,
   milestoneLabel,
+  showTierBadge = false,
 }: {
   task: Task;
   areas: Area[];
   milestoneOptions: MilestoneOption[];
   milestoneLabel: string | null;
+  showTierBadge?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tier, setTier] = useState(task.tier);
@@ -43,15 +47,16 @@ export function TaskRow({
         className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm"
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
-        <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
-          {task.title}{" "}
-          <span className="text-xs text-foreground/40">
-            ({areaName}
-            {milestoneLabel ? ` · ${milestoneLabel}` : ""})
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
+            {task.title}{" "}
+            <span className="text-xs text-foreground/40">
+              ({areaName}
+              {milestoneLabel ? ` · ${milestoneLabel}` : ""})
+            </span>
           </span>
-          {isScheduled && (
-            <span className="ml-1 text-xs font-medium text-foreground/60">· Activates tomorrow</span>
-          )}
+          {showTierBadge && <Badge>{TIER_LABELS[task.tier]}</Badge>}
+          {isScheduled && <Badge tone="effort">Activates tomorrow</Badge>}
         </span>
         <div className="flex gap-2">
           <button
