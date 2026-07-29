@@ -6,6 +6,7 @@ import { refreshAllAreaCapacities } from "@/lib/capacity-service";
 import { getLevelProgress } from "@/lib/level-progress";
 import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
+import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
 // Ship is deliberately not rendered on Today right now — its visual design
@@ -42,6 +43,9 @@ export default async function TodayPage() {
 
   // Decay has no cron yet — recompute on-read (CLAUDE.md build order).
   await refreshAllAreaCapacities(player.id, currentLevel, today, earliestDate);
+  // Same on-read pattern for tasks scheduled to "activate tomorrow" —
+  // flips them on once that date has arrived.
+  await activateScheduledTasks(player.id, today);
 
   const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase

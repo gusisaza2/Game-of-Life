@@ -14,6 +14,7 @@ type Task = {
   recurrence: string;
   is_active: boolean;
   milestone_id: string | null;
+  scheduled_activation_date: string | null;
 };
 type Milestone = { id: string; order_index: number; title: string; status: string };
 

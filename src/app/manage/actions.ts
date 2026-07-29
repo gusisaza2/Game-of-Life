@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getTomorrowDateString } from "@/lib/today";
 
 // Main Tasks require a Milestone (enforced again by the DB trigger).
 // Habits may optionally link to one; Chores never do (CLAUDE.md 8.2).
@@ -141,9 +142,27 @@ export async function setTaskActive(formData: FormData) {
   // Deactivating leaves activated_at untouched — it's irrelevant while
   // inactive, and reactivating later will reset it again anyway.
   const update = isActive
-    ? { is_active: true, activated_at: new Date().toISOString() }
+    ? { is_active: true, activated_at: new Date().toISOString(), scheduled_activation_date: null }
     : { is_active: false };
   await supabase.from("tasks").update(update).eq("id", taskId);
+
+  revalidatePath("/manage");
+  revalidatePath("/");
+}
+
+// "Activate tomorrow": leaves the task inactive today but marks it to turn
+// itself on the next time the app is opened on or after tomorrow (see
+// scheduled-activation-service.ts). Passing null clears a pending
+// schedule instead ("un-schedule").
+export async function scheduleTaskActivation(formData: FormData) {
+  const taskId = String(formData.get("taskId"));
+  const scheduled = formData.get("scheduled") === "true";
+
+  const supabase = await createClient();
+  await supabase
+    .from("tasks")
+    .update({ scheduled_activation_date: scheduled ? getTomorrowDateString() : null })
+    .eq("id", taskId);
 
   revalidatePath("/manage");
   revalidatePath("/");

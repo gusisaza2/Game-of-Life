@@ -8,3 +8,9 @@ export function getDateString(date: Date): string {
 export function getTodayDateString(): string {
   return getDateString(new Date());
 }
+
+export function getTomorrowDateString(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return getDateString(date);
+}

@@ -5,6 +5,8 @@ import { MilestoneForm } from "@/components/manage/MilestoneForm";
 import { MilestoneRow } from "@/components/manage/MilestoneRow";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
+import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
+import { getTodayDateString } from "@/lib/today";
 import { setGoalStatus } from "./actions";
 
 const TIER_LABELS: Record<string, string> = {
@@ -25,6 +27,8 @@ export default async function ManagePage() {
     );
   }
 
+  await activateScheduledTasks(player.id, getTodayDateString());
+
   const [
     { data: areas },
     { data: goals },
@@ -40,7 +44,9 @@ export default async function ManagePage() {
       .order("created_at"),
     supabase
       .from("tasks")
-      .select("id, title, tier, area_id, recurrence, is_active, milestone_id")
+      .select(
+        "id, title, tier, area_id, recurrence, is_active, milestone_id, scheduled_activation_date",
+      )
       .eq("player_id", player.id)
       .order("title"),
     supabase

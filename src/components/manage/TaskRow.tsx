@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateTask, setTaskActive } from "@/app/manage/actions";
+import { updateTask, setTaskActive, scheduleTaskActivation } from "@/app/manage/actions";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -13,6 +13,7 @@ type Task = {
   recurrence: string;
   is_active: boolean;
   milestone_id: string | null;
+  scheduled_activation_date: string | null;
 };
 
 export function TaskRow({
@@ -33,6 +34,8 @@ export function TaskRow({
   const areaName = areas.find((a) => a.id === task.area_id)?.name;
 
   if (!isEditing) {
+    const isScheduled = !task.is_active && !!task.scheduled_activation_date;
+
     return (
       <li className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm">
         <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
@@ -41,6 +44,9 @@ export function TaskRow({
             ({areaName}
             {milestoneLabel ? ` · ${milestoneLabel}` : ""})
           </span>
+          {isScheduled && (
+            <span className="ml-1 text-xs font-medium text-foreground/60">· Activates tomorrow</span>
+          )}
         </span>
         <div className="flex gap-2">
           <button
@@ -49,13 +55,27 @@ export function TaskRow({
           >
             Edit
           </button>
+          {!task.is_active && (
+            <form
+              action={(formData) => startTransition(() => scheduleTaskActivation(formData))}
+            >
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="scheduled" value={(!isScheduled).toString()} />
+              <button
+                disabled={isPending}
+                className="text-xs text-foreground/60 hover:text-foreground"
+              >
+                {isScheduled ? "Cancel schedule" : "Activate tomorrow"}
+              </button>
+            </form>
+          )}
           <form
             action={(formData) => startTransition(() => setTaskActive(formData))}
           >
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="isActive" value={(!task.is_active).toString()} />
             <button disabled={isPending} className="text-xs text-foreground/60 hover:text-foreground">
-              {task.is_active ? "Deactivate" : "Reactivate"}
+              {task.is_active ? "Deactivate" : "Activate now"}
             </button>
           </form>
         </div>
