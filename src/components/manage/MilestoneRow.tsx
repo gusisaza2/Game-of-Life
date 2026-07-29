@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TaskRow } from "./TaskRow";
 import { MilestoneTaskForm } from "./MilestoneTaskForm";
+import { Badge } from "@/components/Badge";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -42,9 +43,9 @@ export function MilestoneRow({
   return (
     <li className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-foreground/80">
+        <p className="flex items-center gap-1.5 text-sm text-foreground/80">
           {milestone.order_index}. {milestone.title}
-          {milestone.status === "completed" && " ✓"}
+          {milestone.status === "completed" && <Badge tone="effort">Done</Badge>}
         </p>
         <div className="flex shrink-0 gap-3 text-xs">
           {taskRows.length > 0 && (

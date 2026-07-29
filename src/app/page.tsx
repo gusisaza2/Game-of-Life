@@ -9,6 +9,7 @@ import { milestoneNameForLevel } from "@/lib/milestones";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
+import { Badge } from "@/components/Badge";
 // Ship is deliberately not rendered on Today right now — its visual design
 // is a separate, later pass (see CLAUDE.md). The component itself is
 // untouched; this screen just doesn't mount it tonight.
@@ -113,11 +114,11 @@ export default async function TodayPage() {
               {milestoneName && <span className="text-foreground/50"> · {milestoneName}</span>}
             </p>
             {yesterdayGoodDay && (
-              <p className="text-xs text-foreground/45">
-                Yesterday:{" "}
-                <span className="text-foreground/70">
-                  {yesterdayGoodDay.isGoodDay ? "Good Day ✓" : "Not a Good Day"}
-                </span>
+              <p className="flex items-center gap-1.5 text-xs text-foreground/45">
+                Yesterday:
+                <Badge tone={yesterdayGoodDay.isGoodDay ? "balance" : "muted"}>
+                  {yesterdayGoodDay.isGoodDay ? "Good Day" : "Not a Good Day"}
+                </Badge>
               </p>
             )}
           </div>
