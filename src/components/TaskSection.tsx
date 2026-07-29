@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleTaskCompletion } from "@/app/actions";
 import { areaColor } from "@/lib/area-colors";
+import { SectionHeading } from "@/components/SectionHeading";
 
 type Task = {
   id: string;
@@ -102,9 +103,9 @@ export function TaskSection({
   return (
     <section className="w-full max-w-md">
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
+        <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
           {title}
-        </h2>
+        </SectionHeading>
         <span className="text-xs tabular-nums text-foreground/35">
           {doneCount}/{tasks.length}
         </span>

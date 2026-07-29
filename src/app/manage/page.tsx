@@ -10,6 +10,7 @@ import { areaColor } from "@/lib/area-colors";
 import { getTodayDateString } from "@/lib/today";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { Badge } from "@/components/Badge";
+import { SectionHeading } from "@/components/SectionHeading";
 import { setGoalStatus } from "./actions";
 
 export default async function ManagePage() {
@@ -109,14 +110,12 @@ export default async function ManagePage() {
       </header>
 
       <section className="w-full max-w-md flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">
-          Goals
-        </h2>
+        <SectionHeading>Goals</SectionHeading>
 
         {(goals ?? []).map((goal) => (
           <div
             key={goal.id}
-            className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4"
+            className="flex flex-col gap-2 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-4"
             style={{ borderLeft: `3px solid ${areaColor(areasById.get(goal.area_id)).accent}` }}
           >
             <div className="flex items-center justify-between">
@@ -174,9 +173,7 @@ export default async function ManagePage() {
       </section>
 
       <section className="w-full max-w-md flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">
-          Tasks
-        </h2>
+        <SectionHeading>Tasks</SectionHeading>
 
         {(["habit", "main_task", "chore"] as const).map((tier) => (
           <div key={tier} className="flex flex-col gap-2">

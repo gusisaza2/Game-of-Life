@@ -44,7 +44,7 @@ export function TaskRow({
 
     return (
       <li
-        className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm"
+        className="flex items-center justify-between rounded border border-foreground/10 bg-foreground/[0.02] px-3 py-2 text-sm"
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
         <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -92,7 +92,7 @@ export function TaskRow({
 
   return (
     <li
-      className="flex flex-col gap-2 rounded border border-foreground/20 px-3 py-2"
+      className="flex flex-col gap-2 rounded border border-foreground/20 bg-foreground/[0.02] px-3 py-2"
       style={{ borderLeft: `3px solid ${color.accent}` }}
     >
       <form
