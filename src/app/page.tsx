@@ -7,9 +7,13 @@ import { getLevelProgress } from "@/lib/level-progress";
 import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
+import { refreshHabitStreaks } from "@/lib/habit-streak-service";
+import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
+import { HabitStreakCard } from "@/components/HabitStreakCard";
+import { SectionHeading } from "@/components/SectionHeading";
 // Ship is deliberately not rendered on Today right now — its visual design
 // is a separate, later pass (see CLAUDE.md). The component itself is
 // untouched; this screen just doesn't mount it tonight.
@@ -47,11 +51,14 @@ export default async function TodayPage() {
   // Same on-read pattern for tasks scheduled to "activate tomorrow" —
   // flips them on once that date has arrived.
   await activateScheduledTasks(player.id, today);
+  // ...and for Habit Streaks: a missed day breaks one with no grace
+  // period, checked here so it shows as broken the moment the page loads.
+  await refreshHabitStreaks(player.id, today);
 
   const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, tier, area_id")
+      .select("id, title, tier, area_id, current_streak, longest_streak")
       .eq("player_id", player.id)
       .eq("is_active", true)
       .order("title"),
@@ -60,9 +67,10 @@ export default async function TodayPage() {
       .select("task_id, xp_awarded")
       .eq("player_id", player.id)
       .eq("completed_date", today),
-    supabase.from("areas").select("id, name"),
+    supabase.from("areas").select("id, name, is_foundation"),
   ]);
 
+  const areasById = new Map((areas ?? []).map((a) => [a.id, a]));
   const areaNameById = new Map((areas ?? []).map((a) => [a.id, a.name as string]));
   const tasksWithArea = (tasks ?? []).map((t) => ({
     ...t,
@@ -126,6 +134,30 @@ export default async function TodayPage() {
           <LevelProgress goodDays={progress.goodDays} nivel={nivelProgress} />
         </div>
       </div>
+
+      {habits.length > 0 && (
+        <div className="w-full max-w-md flex flex-col gap-3">
+          <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
+            Habit Streaks
+          </SectionHeading>
+          <div className="flex flex-col gap-2">
+            {habits.map((habit) => {
+              const area = areasById.get(habit.area_id);
+              const ceiling = perAreaDailyXpCeiling(currentLevel, area?.is_foundation ?? false);
+              return (
+                <HabitStreakCard
+                  key={habit.id}
+                  title={habit.title}
+                  areaName={habit.areaName}
+                  currentStreak={habit.current_streak}
+                  longestStreak={habit.longest_streak}
+                  areaDailyCeiling={ceiling}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-md flex flex-col gap-6">
         <TaskSection

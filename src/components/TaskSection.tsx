@@ -15,6 +15,7 @@ type XpFlash = {
   xpAwarded: number;
   xpType: "growth" | "bonus";
   nivelUp: { nivelReached: number; totalNiveles: number } | null;
+  streakMilestone: { day: number; xpAwarded: number } | null;
 };
 
 function TaskItem({
@@ -77,6 +78,11 @@ function TaskItem({
       {flash?.nivelUp && (
         <p className="xp-flash px-4 text-xs font-medium" style={{ color: "var(--accent-effort)" }}>
           ¡Nivel up! {flash.nivelUp.nivelReached} / {flash.nivelUp.totalNiveles}
+        </p>
+      )}
+      {flash?.streakMilestone && (
+        <p className="xp-flash px-4 text-xs font-medium" style={{ color: color.accent }}>
+          🔥 {flash.streakMilestone.day}-day streak! +{flash.streakMilestone.xpAwarded} XP
         </p>
       )}
     </li>

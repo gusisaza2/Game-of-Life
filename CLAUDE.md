@@ -225,6 +225,46 @@ else:
 
 **New seeded system Habit — "Planned tomorrow":** always available to every player, no `milestone_id` required, standard Habit-tier XP (2.5×) when completed. Not player-created — seed it alongside the 5 Areas and Just Stabilize Path in the database seed step.
 
+### 10. Habit Streak (NEW this session — implemented)
+
+Per-Habit consecutive-day tracking, shown as a circular ring on Today, independent of Good Days/Chapter/Tasks. Only `tier = 'habit'` tasks have one. Its milestone XP feeds the same `cumulative_xp` pool that drives Nivel — deliberately a single XP economy, not a parallel currency (design discussion: rejected a separate/capped channel in favor of calibrating the payout against the existing per-area ceiling instead).
+
+```
+current_streak, longest_streak, last_streak_date, last_streak_milestone_reached  → per Task (habit tier only)
+
+STREAK_GOAL_DAYS = 21   // the ring visually caps here; the streak itself (and its
+                        // XP milestones) keep going past 21 for as long as it holds
+
+// Missed day → current_streak resets to 0 with NO grace period (explicit
+// design choice, distinct from AreaCapacity's decay grace window).
+// longest_streak preserves the historical best separately, so a reset never
+// erases it. last_streak_milestone_reached resets to 0 alongside
+// current_streak, so rebuilding a broken streak can re-earn the same
+// thresholds again (not exploitable — rebuilding still costs the same real days).
+// Computed on-read (same pattern as decay/Good Day backfill) so a broken
+// streak shows as broken the moment the app opens, before any completion.
+
+Milestone thresholds (day → multiplier of that habit's per_area_ceiling(level, area)):
+  5 days   → 1x
+  10 days  → 2x
+  15 days  → 3.5x
+  21 days  → 5x (streak goal complete)
+  beyond 21: next_day = day + round(gap), next_multiplier = multiplier * 1.2,
+             gap *= 1.2, starting gap = 9 (so 21 → 30 → 41 → 54 → 70 → 89 → 111...)
+  // ×1.2 was chosen after simulating ×1.5, which let a single milestone's
+  // payout exceed an entire Chapter's total XP budget (450 for Chapter 1)
+  // within a plausible streak length — ×1.2 stays under that even on very
+  // long streaks, so one Habit Streak milestone never trivializes Nivel's pacing.
+
+xp_for_milestone = round(multiplier * per_area_ceiling(level, area), 2)
+// Uncapped by the daily area ceiling (like the re-engagement bonus) — it's
+// a milestone achievement, not a daily completion.
+```
+
+**Reversibility:** un-completing a Habit the same day reverses both the streak increment and any milestone XP awarded, restoring the task's prior streak state exactly (same snapshot-on-task_log pattern used for AreaCapacity/re-engagement-bonus reversibility).
+
+**Chapter Missions — explicitly deferred, NOT built.** An earlier idea (3-4 required "quest" objectives per Chapter, gating advancement, separate from Habit Streak) was discussed and set aside: it would have reintroduced a hybrid Chapter-up gate right after that was deliberately simplified to Good-Day-only (Section 7 above), and risked stacking three concurrent required systems (Good Days + Nivel + Missions) against the "sustainable, not overloading" design pillar (Section "What this is"). If revisited, it should be **optional** bonus objectives that reward but never block Chapter advancement — see chat history for the fuller discussion before building this.
+
 ---
 
 ## UX principles (don't violate these while building)
