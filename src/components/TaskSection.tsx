@@ -57,7 +57,8 @@ function TaskItem({
           checked={completed}
           disabled={isPending}
           onChange={handleChange}
-          className="h-4 w-4 shrink-0 accent-foreground/80"
+          className="h-4 w-4 shrink-0"
+          style={{ accentColor: color.accent }}
         />
         <span className={completed ? "line-through text-foreground/35" : "text-foreground/90"}>
           {task.title}

@@ -51,7 +51,7 @@ export function TaskRow({
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditing(true)}
-            className="text-xs text-foreground/60 hover:text-foreground"
+            className="link-hover text-xs text-foreground/60"
           >
             Edit
           </button>
@@ -61,10 +61,7 @@ export function TaskRow({
             >
               <input type="hidden" name="taskId" value={task.id} />
               <input type="hidden" name="scheduled" value={(!isScheduled).toString()} />
-              <button
-                disabled={isPending}
-                className="text-xs text-foreground/60 hover:text-foreground"
-              >
+              <button disabled={isPending} className="link-hover text-xs text-foreground/60">
                 {isScheduled ? "Cancel schedule" : "Activate tomorrow"}
               </button>
             </form>
@@ -74,7 +71,7 @@ export function TaskRow({
           >
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="isActive" value={(!task.is_active).toString()} />
-            <button disabled={isPending} className="text-xs text-foreground/60 hover:text-foreground">
+            <button disabled={isPending} className="link-hover text-xs text-foreground/60">
               {task.is_active ? "Deactivate" : "Activate now"}
             </button>
           </form>
@@ -158,11 +155,7 @@ export function TaskRow({
         )}
 
         <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded bg-foreground/10 px-3 py-1 text-sm hover:bg-foreground/20"
-          >
+          <button type="submit" disabled={isPending} className="btn-primary rounded px-3 py-1 text-sm">
             Save
           </button>
           <button
@@ -171,7 +164,7 @@ export function TaskRow({
               setTier(task.tier);
               setIsEditing(false);
             }}
-            className="rounded px-3 py-1 text-sm text-foreground/60 hover:text-foreground"
+            className="link-hover rounded px-3 py-1 text-sm text-foreground/60"
           >
             Cancel
           </button>

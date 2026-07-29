@@ -84,10 +84,7 @@ export function MilestoneTaskForm({
           />
           Activate now
         </label>
-        <button
-          type="submit"
-          className="rounded bg-foreground/10 px-2.5 py-1 text-xs hover:bg-foreground/20"
-        >
+        <button type="submit" className="btn-primary rounded px-2.5 py-1 text-xs">
           Add
         </button>
       </div>

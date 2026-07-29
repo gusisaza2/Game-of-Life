@@ -87,10 +87,7 @@ export default async function TodayPage() {
       <div className="w-full max-w-md flex flex-col gap-5">
         <header className="flex items-baseline justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
-          <Link
-            href="/manage"
-            className="text-sm text-foreground/50 hover:text-foreground transition-colors"
-          >
+          <Link href="/manage" className="link-hover text-sm text-foreground/50">
             Manage →
           </Link>
         </header>

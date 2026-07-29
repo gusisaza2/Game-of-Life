@@ -106,7 +106,7 @@ export default async function ManagePage() {
     <main className="flex-1 flex flex-col items-center gap-10 p-8 sm:p-16">
       <header className="w-full max-w-md flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">Manage</h1>
-        <Link href="/" className="text-sm text-foreground/60 hover:text-foreground">
+        <Link href="/" className="link-hover text-sm text-foreground/60">
           ← Today
         </Link>
       </header>
@@ -130,16 +130,12 @@ export default async function ManagePage() {
                   <form action={setGoalStatus}>
                     <input type="hidden" name="goalId" value={goal.id} />
                     <input type="hidden" name="status" value="completed" />
-                    <button className="text-xs text-foreground/60 hover:text-foreground">
-                      Complete
-                    </button>
+                    <button className="link-hover text-xs text-foreground/60">Complete</button>
                   </form>
                   <form action={setGoalStatus}>
                     <input type="hidden" name="goalId" value={goal.id} />
                     <input type="hidden" name="status" value="abandoned" />
-                    <button className="text-xs text-foreground/60 hover:text-foreground">
-                      Abandon
-                    </button>
+                    <button className="link-hover text-xs text-foreground/60">Abandon</button>
                   </form>
                 </div>
               )}

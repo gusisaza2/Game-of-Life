@@ -51,7 +51,7 @@ export function MilestoneRow({
             <button
               type="button"
               onClick={() => setShowTasks((v) => !v)}
-              className="text-foreground/45 hover:text-foreground"
+              className="link-hover text-foreground/45"
             >
               {showTasks ? "Hide tasks" : `Tasks (${taskRows.length})`}
             </button>
@@ -60,7 +60,7 @@ export function MilestoneRow({
             <button
               type="button"
               onClick={() => setShowAddForm((v) => !v)}
-              className="text-foreground/45 hover:text-foreground"
+              className="link-hover text-foreground/45"
             >
               {showAddForm ? "Cancel" : "+ Add task"}
             </button>

@@ -89,10 +89,7 @@ export function TaskForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        className="self-start rounded bg-foreground/10 px-3 py-1 text-sm hover:bg-foreground/20"
-      >
+      <button type="submit" className="btn-primary self-start rounded px-3 py-1 text-sm">
         Add Task
       </button>
     </form>

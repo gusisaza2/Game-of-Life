@@ -8,6 +8,13 @@
      glance (design doc Section 2: two independent motivators). */
   --accent-balance: #4c6ef5;
   --accent-effort: #e2a53a;
+  /* General interactive accent (buttons, links, focus) -- deliberately a
+     third hue, distinct from the Balance/Effort pair above and from the
+     5 Area colors, so none of those specific meanings get diluted. Teal
+     doubles as a light nod toward the Ship's water palette. */
+  --accent-primary: #0d9488;
+  --accent-primary-hover: #0f766e;
+  --on-accent-primary: #ffffff;
 }
 
 @theme inline {
@@ -23,6 +30,9 @@
     --foreground: #ededed;
     --accent-balance: #7c96ff;
     --accent-effort: #f0bb5c;
+    --accent-primary: #2dd4bf;
+    --accent-primary-hover: #5eead4;
+    --on-accent-primary: #0a0a0a;
   }
 }
 
@@ -30,6 +40,37 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Solid CTA buttons (Add Goal, Add Task, Save, ...) -- the accent shows up
+   only on the handful of actions that actually move something forward,
+   per the "restraint" call: color the primary action, not the whole UI. */
+.btn-primary {
+  background: var(--accent-primary);
+  color: var(--on-accent-primary);
+  transition: background-color 150ms ease;
+}
+.btn-primary:hover {
+  background: var(--accent-primary-hover);
+}
+
+/* Small text-buttons/links (Edit, Deactivate, Manage -&gt;, ...) stay neutral
+   at rest and pick up the accent only on hover/focus, so interactivity
+   reads consistently across the app without tinting everything at once. */
+.link-hover {
+  transition: color 150ms ease;
+}
+.link-hover:hover,
+.link-hover:focus-visible {
+  color: var(--accent-primary);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 @keyframes xp-flash-in {

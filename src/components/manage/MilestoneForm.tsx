@@ -12,10 +12,7 @@ export function MilestoneForm({ goalId }: { goalId: string }) {
         required
         className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-xs"
       />
-      <button
-        type="submit"
-        className="rounded bg-foreground/10 px-2 py-1 text-xs hover:bg-foreground/20"
-      >
+      <button type="submit" className="btn-primary rounded px-2 py-1 text-xs">
         Add
       </button>
     </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import { createGoal } from "@/app/manage/actions";
+import { areaColor } from "@/lib/area-colors";
 
 type Area = { id: string; name: string };
 
@@ -38,16 +39,18 @@ export function GoalForm({ playerId, areas }: { playerId: string; areas: Area[] 
         <legend className="text-xs text-foreground/60">Secondary areas (optional)</legend>
         {areas.map((area) => (
           <label key={area.id} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="secondaryAreaIds" value={area.id} />
+            <input
+              type="checkbox"
+              name="secondaryAreaIds"
+              value={area.id}
+              style={{ accentColor: areaColor(area.name).accent }}
+            />
             {area.name}
           </label>
         ))}
       </fieldset>
 
-      <button
-        type="submit"
-        className="self-start rounded bg-foreground/10 px-3 py-1 text-sm hover:bg-foreground/20"
-      >
+      <button type="submit" className="btn-primary self-start rounded px-3 py-1 text-sm">
         Add Goal
       </button>
     </form>
