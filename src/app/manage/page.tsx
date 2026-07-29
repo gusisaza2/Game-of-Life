@@ -6,6 +6,7 @@ import { MilestoneRow } from "@/components/manage/MilestoneRow";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
+import { areaColor } from "@/lib/area-colors";
 import { getTodayDateString } from "@/lib/today";
 import { setGoalStatus } from "./actions";
 
@@ -117,7 +118,11 @@ export default async function ManagePage() {
         </h2>
 
         {(goals ?? []).map((goal) => (
-          <div key={goal.id} className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4">
+          <div
+            key={goal.id}
+            className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4"
+            style={{ borderLeft: `3px solid ${areaColor(areasById.get(goal.area_id)).accent}` }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{goal.title}</p>

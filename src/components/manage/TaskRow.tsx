@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateTask, setTaskActive, scheduleTaskActivation } from "@/app/manage/actions";
+import { areaColor } from "@/lib/area-colors";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -32,12 +33,16 @@ export function TaskRow({
   const [isPending, startTransition] = useTransition();
 
   const areaName = areas.find((a) => a.id === task.area_id)?.name;
+  const color = areaColor(areaName);
 
   if (!isEditing) {
     const isScheduled = !task.is_active && !!task.scheduled_activation_date;
 
     return (
-      <li className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm">
+      <li
+        className="flex items-center justify-between rounded border border-foreground/10 px-3 py-2 text-sm"
+        style={{ borderLeft: `3px solid ${color.accent}` }}
+      >
         <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
           {task.title}{" "}
           <span className="text-xs text-foreground/40">
@@ -81,7 +86,10 @@ export function TaskRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded border border-foreground/20 px-3 py-2">
+    <li
+      className="flex flex-col gap-2 rounded border border-foreground/20 px-3 py-2"
+      style={{ borderLeft: `3px solid ${color.accent}` }}
+    >
       <form
         action={(formData) =>
           startTransition(async () => {
