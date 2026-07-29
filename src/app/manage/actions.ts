@@ -78,6 +78,11 @@ export async function createTask(formData: FormData) {
   const recurrence = String(formData.get("recurrence"));
   const milestoneIdRaw = formData.get("milestoneId");
   const milestoneId = milestoneIdRaw ? String(milestoneIdRaw) : "";
+  // Tasks added inline under a Milestone default to inactive (planned for
+  // later, not due now) unless the form explicitly checks "Activate now".
+  // The standalone Add Task form always sends "true" here, preserving its
+  // existing immediate-activation behavior.
+  const isActive = formData.get("isActive") !== "false";
 
   if (!title || !areaId) return;
   if (tier === "main_task" && !milestoneId) return;
@@ -90,7 +95,7 @@ export async function createTask(formData: FormData) {
     tier,
     title,
     recurrence,
-    is_active: true,
+    is_active: isActive,
   });
 
   revalidatePath("/manage");
@@ -130,7 +135,15 @@ export async function setTaskActive(formData: FormData) {
   const isActive = formData.get("isActive") === "true";
 
   const supabase = await createClient();
-  await supabase.from("tasks").update({ is_active: isActive }).eq("id", taskId);
+  // Activating a task resets its activation clock, so a backlog Task
+  // planned weeks ago still goes through the same day-of/day-after
+  // Activation Delay as one created fresh today (CLAUDE.md #9).
+  // Deactivating leaves activated_at untouched — it's irrelevant while
+  // inactive, and reactivating later will reset it again anyway.
+  const update = isActive
+    ? { is_active: true, activated_at: new Date().toISOString() }
+    : { is_active: false };
+  await supabase.from("tasks").update(update).eq("id", taskId);
 
   revalidatePath("/manage");
   revalidatePath("/");

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { GoalForm } from "@/components/manage/GoalForm";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
+import { MilestoneTaskForm } from "@/components/manage/MilestoneTaskForm";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
 import { setGoalStatus } from "./actions";
@@ -62,10 +63,37 @@ export default async function ManagePage() {
     ]),
   );
 
+  // Milestone-linked tasks are shown nested under their Milestone instead
+  // of the flat Tasks list below, so "everything left to do for this
+  // Milestone" (active or still-planned) reads as one group.
+  const standaloneTasks = (tasks ?? []).filter((t) => !t.milestone_id);
+  const tasksByMilestoneId = new Map<string, typeof tasks>();
+  for (const task of tasks ?? []) {
+    if (!task.milestone_id) continue;
+    const list = tasksByMilestoneId.get(task.milestone_id) ?? [];
+    list.push(task);
+    tasksByMilestoneId.set(task.milestone_id, list);
+  }
+
+  // Guarantee a task's current milestone link survives into its edit
+  // form's options, even if that Goal is no longer active.
+  function milestoneOptionsFor(task: { milestone_id: string | null }) {
+    if (!task.milestone_id || milestoneOptions.some((m) => m.id === task.milestone_id)) {
+      return milestoneOptions;
+    }
+    return [
+      ...milestoneOptions,
+      {
+        id: task.milestone_id,
+        label: milestoneLabelsById.get(task.milestone_id) ?? "Linked milestone",
+      },
+    ];
+  }
+
   const tasksByTier = {
-    habit: (tasks ?? []).filter((t) => t.tier === "habit"),
-    main_task: (tasks ?? []).filter((t) => t.tier === "main_task"),
-    chore: (tasks ?? []).filter((t) => t.tier === "chore"),
+    habit: standaloneTasks.filter((t) => t.tier === "habit"),
+    main_task: standaloneTasks.filter((t) => t.tier === "main_task"),
+    chore: standaloneTasks.filter((t) => t.tier === "chore"),
   };
 
   return (
@@ -111,15 +139,45 @@ export default async function ManagePage() {
               )}
             </div>
 
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col gap-3">
               {[...goal.milestones]
                 .sort((a, b) => a.order_index - b.order_index)
-                .map((milestone) => (
-                  <li key={milestone.id} className="text-sm text-foreground/80">
-                    {milestone.order_index}. {milestone.title}
-                    {milestone.status === "completed" && " ✓"}
-                  </li>
-                ))}
+                .map((milestone) => {
+                  const milestoneTasks = tasksByMilestoneId.get(milestone.id) ?? [];
+                  return (
+                    <li key={milestone.id} className="flex flex-col gap-1.5">
+                      <p className="text-sm text-foreground/80">
+                        {milestone.order_index}. {milestone.title}
+                        {milestone.status === "completed" && " ✓"}
+                      </p>
+
+                      {milestoneTasks.length > 0 && (
+                        <ul className="flex flex-col gap-1 pl-3">
+                          {milestoneTasks.map((task) => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              areas={areas ?? []}
+                              milestoneOptions={milestoneOptionsFor(task)}
+                              milestoneLabel={null}
+                            />
+                          ))}
+                        </ul>
+                      )}
+
+                      {goal.status === "active" && milestone.status === "active" && (
+                        <div className="pl-3">
+                          <MilestoneTaskForm
+                            milestoneId={milestone.id}
+                            playerId={player.id}
+                            areas={areas ?? []}
+                            defaultAreaId={goal.area_id}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
             </ul>
 
             {goal.status === "active" && <MilestoneForm goalId={goal.id} />}
@@ -138,32 +196,15 @@ export default async function ManagePage() {
           <div key={tier} className="flex flex-col gap-2">
             <h3 className="text-xs text-foreground/60">{TIER_LABELS[tier]}</h3>
             <ul className="flex flex-col gap-1">
-              {tasksByTier[tier].map((task) => {
-                // Guarantee the task's current link survives into the edit
-                // form's options, even if its Goal is no longer active.
-                const rowMilestoneOptions =
-                  task.milestone_id && !milestoneOptions.some((m) => m.id === task.milestone_id)
-                    ? [
-                        ...milestoneOptions,
-                        {
-                          id: task.milestone_id,
-                          label: milestoneLabelsById.get(task.milestone_id) ?? "Linked milestone",
-                        },
-                      ]
-                    : milestoneOptions;
-
-                return (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    areas={areas ?? []}
-                    milestoneOptions={rowMilestoneOptions}
-                    milestoneLabel={
-                      task.milestone_id ? milestoneLabelsById.get(task.milestone_id) ?? null : null
-                    }
-                  />
-                );
-              })}
+              {tasksByTier[tier].map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  areas={areas ?? []}
+                  milestoneOptions={milestoneOptionsFor(task)}
+                  milestoneLabel={null}
+                />
+              ))}
             </ul>
           </div>
         ))}

@@ -17,11 +17,14 @@ export type XpResult = {
 // MVP (CLAUDE.md: "can hardcode 'no overflow yet' — just cap XP at the
 // daily ceiling for now").
 //
-// Task Activation Delay (CLAUDE.md #9 / design doc 6.5): a task created
+// Task Activation Delay (CLAUDE.md #9 / design doc 6.5): a task activated
 // today, completed today, that isn't exempt (Path template / system
 // content) earns Bonus XP instead — full tier value, but uncapped by the
 // area ceiling and excluded from cumulative_xp, since it doesn't feed
-// Growth-phase leveling.
+// Growth-phase leveling. "Activated" (not "created") because a backlog
+// Task planned for a Milestone can sit inactive for weeks before the
+// player turns it on — the delay should key off that moment, not the
+// original creation date.
 export async function computeXpForCompletion(
   playerId: string,
   taskId: string,
@@ -36,7 +39,7 @@ export async function computeXpForCompletion(
     .single();
   const { data: task } = await supabase
     .from("tasks")
-    .select("tier, area_id, source, created_at")
+    .select("tier, area_id, source, activated_at")
     .eq("id", taskId)
     .single();
   if (!player || !task) return { xpAwarded: 0, xpType: "growth" };
@@ -44,8 +47,8 @@ export async function computeXpForCompletion(
   const baseXp = TIER_XP_MULTIPLIER[task.tier as Tier];
 
   const isExempt = task.source !== "custom";
-  const createdOnDate = getDateString(new Date(task.created_at));
-  if (!isExempt && createdOnDate === date) {
+  const activatedOnDate = getDateString(new Date(task.activated_at));
+  if (!isExempt && activatedOnDate === date) {
     return { xpAwarded: baseXp, xpType: "bonus" };
   }
 

@@ -23,6 +23,7 @@ export function TaskForm({
       className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4"
     >
       <input type="hidden" name="playerId" value={playerId} />
+      <input type="hidden" name="isActive" value="true" />
 
       <input
         name="title"
