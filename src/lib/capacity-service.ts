@@ -58,6 +58,15 @@ export async function refreshAllAreaCapacities(
   );
 }
 
+export type AreaActivityResult = {
+  bonusXp: number;
+  // Snapshot of the row *before* this completion overwrote it, so an
+  // un-complete can restore it exactly instead of leaving the reset stuck.
+  prevCapacity: number;
+  prevLastActivityDate: string | null;
+  prevDecayCycleStartDate: string | null;
+};
+
 // Called when a task is completed. Resets the area's decay clock and, if
 // the completion follows a genuine lapse (already decaying past the grace
 // window), returns the 1x re-engagement bonus XP for that area.
@@ -68,7 +77,7 @@ export async function registerAreaActivity(
   level: number,
   today: string,
   playerCreatedDate: string,
-): Promise<number> {
+): Promise<AreaActivityResult | null> {
   const supabase = await createClient();
 
   const { data: row } = await supabase
@@ -77,7 +86,7 @@ export async function registerAreaActivity(
     .eq("player_id", playerId)
     .eq("area_id", areaId)
     .single();
-  if (!row) return 0;
+  if (!row) return null;
 
   const lastActivity = row.last_activity_date ?? playerCreatedDate;
   const daysSinceActivityBefore = daysBetween(lastActivity, today);
@@ -94,5 +103,39 @@ export async function registerAreaActivity(
     .eq("player_id", playerId)
     .eq("area_id", areaId);
 
-  return bonusXp;
+  return {
+    bonusXp,
+    prevCapacity: Number(row.capacity),
+    prevLastActivityDate: row.last_activity_date,
+    prevDecayCycleStartDate: row.decay_cycle_start_date,
+  };
+}
+
+// Un-does registerAreaActivity's reset when a completion is undone.
+// Guarded: only restores if last_activity_date is still what
+// registerAreaActivity set it to (== the date the task was completed on)
+// -- if something else touched this area since, leave it alone rather
+// than clobber real, later activity.
+export async function restoreAreaActivity(
+  playerId: string,
+  areaId: string,
+  completedDate: string,
+  snapshot: {
+    prevCapacity: number;
+    prevLastActivityDate: string | null;
+    prevDecayCycleStartDate: string | null;
+  },
+): Promise<void> {
+  const supabase = await createClient();
+
+  await supabase
+    .from("area_capacities")
+    .update({
+      capacity: snapshot.prevCapacity,
+      last_activity_date: snapshot.prevLastActivityDate,
+      decay_cycle_start_date: snapshot.prevDecayCycleStartDate,
+    })
+    .eq("player_id", playerId)
+    .eq("area_id", areaId)
+    .eq("last_activity_date", completedDate);
 }

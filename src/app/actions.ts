@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { computeXpForCompletion, type XpType } from "@/lib/xp-service";
 import { computeNivelUp, type NivelUpEvent } from "@/lib/nivel-service";
-import { registerAreaActivity } from "@/lib/capacity-service";
+import { registerAreaActivity, restoreAreaActivity } from "@/lib/capacity-service";
 import { getDateString } from "@/lib/today";
 
 export async function toggleTaskCompletion(
@@ -18,7 +18,9 @@ export async function toggleTaskCompletion(
   if (isCurrentlyCompleted) {
     const { data: existingLog } = await supabase
       .from("task_logs")
-      .select("xp_awarded, xp_type")
+      .select(
+        "xp_awarded, xp_type, reengagement_bonus_xp, prev_area_capacity, prev_area_last_activity_date, prev_area_decay_cycle_start_date",
+      )
       .eq("task_id", taskId)
       .eq("completed_date", date)
       .maybeSingle();
@@ -29,23 +31,47 @@ export async function toggleTaskCompletion(
       .eq("task_id", taskId)
       .eq("completed_date", date);
 
-    // Bonus XP was never added to cumulative_xp, so only reverse Growth XP.
-    // Nivel is never revoked once reached (same one-way logic as Chapter).
-    if (existingLog && existingLog.xp_type === "growth") {
-      const { data: player } = await supabase
-        .from("players")
-        .select("cumulative_xp")
-        .eq("id", playerId)
-        .single();
-      if (player) {
-        const newXp = Math.max(
-          0,
-          Number(player.cumulative_xp) - Number(existingLog.xp_awarded),
-        );
-        await supabase
+    if (existingLog) {
+      // Bonus XP (Task Activation Delay's same-day type) was never added to
+      // cumulative_xp, so only the tier XP (if Growth) needs reversing --
+      // but the re-engagement bonus (formula #6) *is* always Growth XP, so
+      // it must be reversed too, or it stays stuck forever (the bug this
+      // fixes). Nivel is never revoked once reached (same one-way logic as
+      // Chapter) -- untouched here.
+      const growthToReverse =
+        (existingLog.xp_type === "growth" ? Number(existingLog.xp_awarded) : 0) +
+        Number(existingLog.reengagement_bonus_xp);
+
+      if (growthToReverse > 0) {
+        const { data: player } = await supabase
           .from("players")
-          .update({ cumulative_xp: newXp })
-          .eq("id", playerId);
+          .select("cumulative_xp")
+          .eq("id", playerId)
+          .single();
+        if (player) {
+          const newXp = Math.max(0, Number(player.cumulative_xp) - growthToReverse);
+          await supabase.from("players").update({ cumulative_xp: newXp }).eq("id", playerId);
+        }
+      }
+
+      // Every completion resets the area's decay clock (AreaCapacity), not
+      // just bonus-triggering ones -- restore that too, guarded so it
+      // can't clobber real activity that happened in this area since.
+      // (prev_area_capacity is null only for logs written before this
+      // snapshot existed -- nothing to restore for those.)
+      if (existingLog.prev_area_capacity !== null) {
+        const { data: task } = await supabase
+          .from("tasks")
+          .select("area_id")
+          .eq("id", taskId)
+          .single();
+        if (task) {
+          await restoreAreaActivity(playerId, task.area_id, date, {
+            prevCapacity: Number(existingLog.prev_area_capacity),
+            prevLastActivityDate: existingLog.prev_area_last_activity_date,
+            prevDecayCycleStartDate: existingLog.prev_area_decay_cycle_start_date,
+          });
+        }
       }
     }
 
@@ -85,7 +111,7 @@ export async function toggleTaskCompletion(
     taskId,
     date,
   );
-  const bonusXp = await registerAreaActivity(
+  const activity = await registerAreaActivity(
     playerId,
     task.area_id,
     area.is_foundation,
@@ -93,6 +119,7 @@ export async function toggleTaskCompletion(
     date,
     playerCreatedDate,
   );
+  const bonusXp = activity?.bonusXp ?? 0;
 
   await supabase.from("task_logs").insert({
     task_id: taskId,
@@ -100,6 +127,10 @@ export async function toggleTaskCompletion(
     completed_date: date,
     xp_awarded: completionXp,
     xp_type: xpType,
+    reengagement_bonus_xp: bonusXp,
+    prev_area_capacity: activity?.prevCapacity ?? null,
+    prev_area_last_activity_date: activity?.prevLastActivityDate ?? null,
+    prev_area_decay_cycle_start_date: activity?.prevDecayCycleStartDate ?? null,
   });
 
   // Bonus XP (same-day-created, non-exempt tasks) doesn't feed Growth-phase
