@@ -115,7 +115,7 @@ export default async function ManagePage() {
         {(goals ?? []).map((goal) => (
           <div
             key={goal.id}
-            className="flex flex-col gap-2 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-4"
+            className="flex flex-col gap-2 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
             style={{ borderLeft: `3px solid ${areaColor(areasById.get(goal.area_id)).accent}` }}
           >
             <div className="flex items-center justify-between">
