@@ -147,11 +147,15 @@ export default async function TodayPage() {
               return (
                 <HabitStreakCard
                   key={habit.id}
+                  taskId={habit.id}
                   title={habit.title}
                   areaName={habit.areaName}
                   currentStreak={habit.current_streak}
                   longestStreak={habit.longest_streak}
                   areaDailyCeiling={ceiling}
+                  completed={completedIds.has(habit.id)}
+                  playerId={player.id}
+                  today={today}
                 />
               );
             })}
@@ -160,13 +164,6 @@ export default async function TodayPage() {
       )}
 
       <div className="w-full max-w-md flex flex-col gap-6">
-        <TaskSection
-          title="Habits"
-          tasks={habits}
-          completedIds={completedIds}
-          playerId={player.id}
-          today={today}
-        />
         <TaskSection
           title="Main Tasks"
           tasks={mainTasks}

@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { toggleTaskCompletion } from "@/app/actions";
 import { areaColor } from "@/lib/area-colors";
+import { useTaskCompletion } from "@/lib/use-task-completion";
 import { SectionHeading } from "@/components/SectionHeading";
 
 type Task = {
   id: string;
   title: string;
   areaName?: string;
-};
-
-type XpFlash = {
-  xpAwarded: number;
-  xpType: "growth" | "bonus";
-  nivelUp: { nivelReached: number; totalNiveles: number } | null;
-  streakMilestone: { day: number; xpAwarded: number } | null;
 };
 
 function TaskItem({
@@ -29,19 +21,8 @@ function TaskItem({
   playerId: string;
   today: string;
 }) {
-  const [isPending, startTransition] = useTransition();
-  const [flash, setFlash] = useState<XpFlash | null>(null);
+  const { isPending, flash, toggle } = useTaskCompletion(task.id, playerId, today, completed);
   const color = areaColor(task.areaName);
-
-  function handleChange() {
-    startTransition(async () => {
-      const result = await toggleTaskCompletion(task.id, playerId, today, completed);
-      if (result) {
-        setFlash(result);
-        setTimeout(() => setFlash(null), 2400);
-      }
-    });
-  }
 
   return (
     <li className="flex flex-col gap-1">
@@ -58,7 +39,7 @@ function TaskItem({
           type="checkbox"
           checked={completed}
           disabled={isPending}
-          onChange={handleChange}
+          onChange={toggle}
           className="h-4 w-4 shrink-0"
           style={{ accentColor: color.accent }}
         />

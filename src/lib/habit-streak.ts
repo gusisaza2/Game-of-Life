@@ -56,6 +56,9 @@ export function nextStreakMilestoneAfter(streakDay: number): StreakMilestone {
   );
 }
 
+// Rounded to a whole number (unlike other XP sources in the game, which
+// can be fractional) -- streak milestone payouts read as a clean, gameified
+// number rather than a decimal.
 export function xpForStreakMilestone(multiplier: number, areaDailyCeiling: number): number {
-  return Math.round(multiplier * areaDailyCeiling * 100) / 100;
+  return Math.round(multiplier * areaDailyCeiling);
 }
