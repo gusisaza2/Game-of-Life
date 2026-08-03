@@ -48,7 +48,7 @@ export function HabitStreakCard({
         aria-pressed={completed}
         aria-label={completed ? `Mark ${title} incomplete` : `Mark ${title} complete`}
         style={{ color }}
-        className="flex w-full items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.02] p-3 text-left transition-colors hover:bg-foreground/[0.05] disabled:opacity-70"
+        className="flex w-full items-center gap-3 rounded-xl border border-foreground/10 bg-surface p-3 text-left transition-colors hover:bg-surface-hover disabled:opacity-70"
       >
         <div className="relative shrink-0">
           <HabitStreakRing streak={currentStreak} color={color} />

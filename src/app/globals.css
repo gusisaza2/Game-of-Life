@@ -1,11 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  /* "Deep Ocean" -- cool teal-navy neutrals instead of clinical pure
-     white/black, tying the base palette to looking out at the sea at
-     night rather than a generic dark-mode gray. */
-  --background: #f4f9f9;
-  --foreground: #132220;
+  /* "Vivid Light" -- a bright, warm, colored page background with solid
+     white card surfaces sitting on top of it (not a faded tint of the
+     background), per explicit design feedback: light and lively, cards
+     that are a genuinely different color from the page, not a blur/gray.
+     Deliberately the same in both the light and (prefers-color-scheme:
+     dark) blocks below -- the ask was "no dark colors at all," so this
+     intentionally stops varying by system theme for now. */
+  --background: #fff1e4;
+  --foreground: #2a2118;
+  --surface: #ffffff;
+  --surface-hover: #fdf6ee;
   /* Good Days (Balance axis) vs Nivel (Effort axis) get distinct accent
      colors so the two independent progress signals read as different at a
      glance (design doc Section 2: two independent motivators). */
@@ -23,19 +29,23 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f1c1e;
-    --foreground: #e6f1ef;
-    --accent-balance: #7c96ff;
-    --accent-effort: #f0bb5c;
-    --accent-primary: #2dd4bf;
-    --accent-primary-hover: #5eead4;
-    --on-accent-primary: #0a0a0a;
+    --background: #fff1e4;
+    --foreground: #2a2118;
+    --surface: #ffffff;
+    --surface-hover: #fdf6ee;
+    --accent-balance: #4c6ef5;
+    --accent-effort: #e2a53a;
+    --accent-primary: #0d9488;
+    --accent-primary-hover: #0f766e;
+    --on-accent-primary: #ffffff;
   }
 }
 
