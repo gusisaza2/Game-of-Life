@@ -1,10 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-
-function daysBetween(earlierDate: string, laterDate: string): number {
-  const a = new Date(`${earlierDate}T00:00:00`);
-  const b = new Date(`${laterDate}T00:00:00`);
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-}
+import { daysBetween } from "@/lib/today";
 
 // A missed day breaks a Habit's streak with no grace period (design
 // discussion: this was a deliberate choice, distinct from AreaCapacity's

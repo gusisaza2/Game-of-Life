@@ -19,6 +19,8 @@ export function HabitStreakCard({
   completed,
   playerId,
   today,
+  monthlyCompleted,
+  monthlyDaysActive,
 }: {
   taskId: string;
   title: string;
@@ -29,6 +31,8 @@ export function HabitStreakCard({
   completed: boolean;
   playerId: string;
   today: string;
+  monthlyCompleted: number;
+  monthlyDaysActive: number;
 }) {
   const color = areaColor(areaName).accent;
   const next = nextStreakMilestoneAfter(currentStreak);
@@ -68,6 +72,11 @@ export function HabitStreakCard({
             {currentStreak === 1 ? "1 day" : `${currentStreak} days`}
             {currentStreak >= STREAK_GOAL_DAYS ? " · streak complete 🔥" : " in a row"}
             {longestStreak > currentStreak && ` · best ${longestStreak}`}
+          </span>
+          {/* Stays visible (and non-zero) even when the streak just broke —
+              a missed day shouldn't feel like the whole month reset too. */}
+          <span className="text-xs text-foreground/40">
+            {monthlyCompleted}/{monthlyDaysActive} this month
           </span>
           <span className="text-xs text-foreground/40">
             +{nextXp} XP at {next.day} days

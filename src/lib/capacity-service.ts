@@ -1,12 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeDecayedCapacity, capacityForLevel, GRACE_DAYS } from "@/lib/capacity";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
-
-function daysBetween(earlierDate: string, laterDate: string): number {
-  const a = new Date(`${earlierDate}T00:00:00`);
-  const b = new Date(`${laterDate}T00:00:00`);
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-}
+import { daysBetween } from "@/lib/today";
 
 // Recomputes and persists decay for one AreaCapacity row, on-read
 // (CLAUDE.md build order: "on-read is simpler for MVP").

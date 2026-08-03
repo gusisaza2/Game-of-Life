@@ -14,3 +14,9 @@ export function getTomorrowDateString(): string {
   date.setDate(date.getDate() + 1);
   return getDateString(date);
 }
+
+export function daysBetween(earlierDate: string, laterDate: string): number {
+  const a = new Date(`${earlierDate}T00:00:00`);
+  const b = new Date(`${laterDate}T00:00:00`);
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}

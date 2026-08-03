@@ -7,13 +7,7 @@ import { computeNivelUp, type NivelUpEvent } from "@/lib/nivel-service";
 import { registerAreaActivity, restoreAreaActivity } from "@/lib/capacity-service";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { streakMilestoneAt, xpForStreakMilestone } from "@/lib/habit-streak";
-import { getDateString } from "@/lib/today";
-
-function daysBetween(earlierDate: string, laterDate: string): number {
-  const a = new Date(`${earlierDate}T00:00:00`);
-  const b = new Date(`${laterDate}T00:00:00`);
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-}
+import { getDateString, daysBetween } from "@/lib/today";
 
 export type StreakMilestoneEvent = { day: number; xpAwarded: number };
 

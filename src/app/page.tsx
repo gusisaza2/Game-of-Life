@@ -8,6 +8,8 @@ import { getNivelProgress } from "@/lib/nivel";
 import { milestoneNameForLevel } from "@/lib/milestones";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { refreshHabitStreaks } from "@/lib/habit-streak-service";
+import { getMonthlyCompletedDatesByTask } from "@/lib/habit-stats-service";
+import { monthlyCompletionStats } from "@/lib/habit-stats";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { TaskSection } from "@/components/TaskSection";
 import { LevelProgress } from "@/components/LevelProgress";
@@ -58,7 +60,7 @@ export default async function TodayPage() {
   const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, tier, area_id, current_streak, longest_streak")
+      .select("id, title, tier, area_id, current_streak, longest_streak, activated_at")
       .eq("player_id", player.id)
       .eq("is_active", true)
       .order("title"),
@@ -85,6 +87,17 @@ export default async function TodayPage() {
   const habits = tasksWithArea.filter((t) => t.tier === "habit");
   const mainTasks = tasksWithArea.filter((t) => t.tier === "main_task");
   const chores = tasksWithArea.filter((t) => t.tier === "chore");
+
+  // Habit Stats — this month's completion rate, shown right on the card so
+  // it stays visible even when "days in a row" is 0 (design discussion:
+  // the streak resetting shouldn't feel like starting from nothing).
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const monthlyDatesByHabit = await getMonthlyCompletedDatesByTask(
+    player.id,
+    habits.map((h) => h.id),
+    monthStart,
+    today,
+  );
 
   const levelLabel = `Chapter ${currentLevel}`;
   const milestoneName = milestoneNameForLevel(currentLevel);
@@ -137,13 +150,24 @@ export default async function TodayPage() {
 
       {habits.length > 0 && (
         <div className="w-full max-w-md flex flex-col gap-3">
-          <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
-            Habit Streaks
-          </SectionHeading>
+          <div className="flex items-baseline justify-between">
+            <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
+              Habit Streaks
+            </SectionHeading>
+            <Link href="/habit-stats" className="link-hover text-xs text-foreground/45">
+              Habit Stats →
+            </Link>
+          </div>
           <div className="flex flex-col gap-2">
             {habits.map((habit) => {
               const area = areasById.get(habit.area_id);
               const ceiling = perAreaDailyXpCeiling(currentLevel, area?.is_foundation ?? false);
+              const activatedDate = getDateString(new Date(habit.activated_at));
+              const monthly = monthlyCompletionStats(
+                activatedDate,
+                today,
+                monthlyDatesByHabit.get(habit.id) ?? [],
+              );
               return (
                 <HabitStreakCard
                   key={habit.id}
@@ -156,6 +180,8 @@ export default async function TodayPage() {
                   completed={completedIds.has(habit.id)}
                   playerId={player.id}
                   today={today}
+                  monthlyCompleted={monthly.completed}
+                  monthlyDaysActive={monthly.daysActive}
                 />
               );
             })}
