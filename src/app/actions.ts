@@ -53,16 +53,18 @@ export async function toggleTaskCompletion(
         Number(existingLog.reengagement_bonus_xp) +
         Number(existingLog.streak_xp_awarded);
 
-      if (growthToReverse > 0) {
-        const { data: player } = await supabase
-          .from("players")
-          .select("cumulative_xp")
-          .eq("id", playerId)
-          .single();
-        if (player) {
-          const newXp = Math.max(0, Number(player.cumulative_xp) - growthToReverse);
-          await supabase.from("players").update({ cumulative_xp: newXp }).eq("id", playerId);
-        }
+      // Player (for XP reversal) and the task's area_id (for capacity
+      // restore) don't depend on each other -- fetch both at once instead
+      // of one after the other. Fetched unconditionally since both are
+      // cheap and the common case needs at least one of them anyway.
+      const [{ data: player }, { data: task }] = await Promise.all([
+        supabase.from("players").select("cumulative_xp").eq("id", playerId).single(),
+        supabase.from("tasks").select("area_id").eq("id", taskId).single(),
+      ]);
+
+      if (growthToReverse > 0 && player) {
+        const newXp = Math.max(0, Number(player.cumulative_xp) - growthToReverse);
+        await supabase.from("players").update({ cumulative_xp: newXp }).eq("id", playerId);
       }
 
       // Every completion resets the area's decay clock (AreaCapacity), not
@@ -70,19 +72,12 @@ export async function toggleTaskCompletion(
       // can't clobber real activity that happened in this area since.
       // (prev_area_capacity is null only for logs written before this
       // snapshot existed -- nothing to restore for those.)
-      if (existingLog.prev_area_capacity !== null) {
-        const { data: task } = await supabase
-          .from("tasks")
-          .select("area_id")
-          .eq("id", taskId)
-          .single();
-        if (task) {
-          await restoreAreaActivity(playerId, task.area_id, date, {
-            prevCapacity: Number(existingLog.prev_area_capacity),
-            prevLastActivityDate: existingLog.prev_area_last_activity_date,
-            prevDecayCycleStartDate: existingLog.prev_area_decay_cycle_start_date,
-          });
-        }
+      if (existingLog.prev_area_capacity !== null && task) {
+        await restoreAreaActivity(playerId, task.area_id, date, {
+          prevCapacity: Number(existingLog.prev_area_capacity),
+          prevLastActivityDate: existingLog.prev_area_last_activity_date,
+          prevDecayCycleStartDate: existingLog.prev_area_decay_cycle_start_date,
+        });
       }
 
       // Same idea for Habit Streak state -- restore it, guarded so it only
@@ -107,18 +102,22 @@ export async function toggleTaskCompletion(
     return null;
   }
 
-  const { data: player } = await supabase
-    .from("players")
-    .select("current_level, cumulative_xp, created_at, last_nivel_reached")
-    .eq("id", playerId)
-    .single();
-  const { data: task } = await supabase
-    .from("tasks")
-    .select(
-      "area_id, tier, current_streak, longest_streak, last_streak_date, last_streak_milestone_reached",
-    )
-    .eq("id", taskId)
-    .single();
+  // Player and task don't depend on each other -- fetch both at once
+  // instead of one after the other.
+  const [{ data: player }, { data: task }] = await Promise.all([
+    supabase
+      .from("players")
+      .select("current_level, cumulative_xp, created_at, last_nivel_reached")
+      .eq("id", playerId)
+      .single(),
+    supabase
+      .from("tasks")
+      .select(
+        "area_id, tier, source, activated_at, current_streak, longest_streak, last_streak_date, last_streak_milestone_reached",
+      )
+      .eq("id", taskId)
+      .single(),
+  ]);
   if (!player || !task) {
     revalidatePath("/");
     return null;
@@ -136,19 +135,19 @@ export async function toggleTaskCompletion(
 
   const playerCreatedDate = getDateString(new Date(player.created_at));
 
-  const { xpAwarded: completionXp, xpType } = await computeXpForCompletion(
-    playerId,
-    taskId,
-    date,
-  );
-  const activity = await registerAreaActivity(
-    playerId,
-    task.area_id,
-    area.is_foundation,
-    player.current_level,
-    date,
-    playerCreatedDate,
-  );
+  // Independent of each other (one reads task_logs, the other reads/writes
+  // area_capacities) -- run together instead of one after the other.
+  const [{ xpAwarded: completionXp, xpType }, activity] = await Promise.all([
+    computeXpForCompletion(playerId, taskId, date, player.current_level, task, area.is_foundation),
+    registerAreaActivity(
+      playerId,
+      task.area_id,
+      area.is_foundation,
+      player.current_level,
+      date,
+      playerCreatedDate,
+    ),
+  ]);
   const bonusXp = activity?.bonusXp ?? 0;
 
   // Habit Streak: consecutive-day tracking per Habit, independent of Good

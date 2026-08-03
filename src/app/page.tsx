@@ -49,13 +49,16 @@ export default async function TodayPage() {
     freshPlayerState?.lifetime_good_day_count ?? player.lifetime_good_day_count;
 
   // Decay has no cron yet — recompute on-read (CLAUDE.md build order).
-  await refreshAllAreaCapacities(player.id, currentLevel, today, earliestDate);
-  // Same on-read pattern for tasks scheduled to "activate tomorrow" —
-  // flips them on once that date has arrived.
-  await activateScheduledTasks(player.id, today);
-  // ...and for Habit Streaks: a missed day breaks one with no grace
-  // period, checked here so it shows as broken the moment the page loads.
-  await refreshHabitStreaks(player.id, today);
+  // Same on-read pattern for tasks scheduled to "activate tomorrow" (flips
+  // them on once that date has arrived) and for Habit Streaks (a missed day
+  // breaks one with no grace period, checked here so it shows as broken the
+  // moment the page loads). None of the three touch each other's data, so
+  // they run together instead of one after another.
+  await Promise.all([
+    refreshAllAreaCapacities(player.id, currentLevel, today, earliestDate),
+    activateScheduledTasks(player.id, today),
+    refreshHabitStreaks(player.id, today),
+  ]);
 
   const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase

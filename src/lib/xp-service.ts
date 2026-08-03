@@ -25,24 +25,20 @@ export type XpResult = {
 // Task planned for a Milestone can sit inactive for weeks before the
 // player turns it on — the delay should key off that moment, not the
 // original creation date.
+// Takes the player's level, the task's own fields, and its area's
+// is_foundation flag as params instead of re-fetching them -- the caller
+// (toggleTaskCompletion) already has all three moments earlier, and this
+// function used to silently re-query the same rows, tripling some of the
+// round trips on every single task completion for no reason.
 export async function computeXpForCompletion(
   playerId: string,
   taskId: string,
   date: string,
+  currentLevel: number,
+  task: { tier: string; area_id: string; source: string; activated_at: string },
+  isFoundation: boolean,
 ): Promise<XpResult> {
   const supabase = await createClient();
-
-  const { data: player } = await supabase
-    .from("players")
-    .select("current_level")
-    .eq("id", playerId)
-    .single();
-  const { data: task } = await supabase
-    .from("tasks")
-    .select("tier, area_id, source, activated_at")
-    .eq("id", taskId)
-    .single();
-  if (!player || !task) return { xpAwarded: 0, xpType: "growth" };
 
   const baseXp = TIER_XP_MULTIPLIER[task.tier as Tier];
 
@@ -52,14 +48,7 @@ export async function computeXpForCompletion(
     return { xpAwarded: baseXp, xpType: "bonus" };
   }
 
-  const { data: area } = await supabase
-    .from("areas")
-    .select("is_foundation")
-    .eq("id", task.area_id)
-    .single();
-  if (!area) return { xpAwarded: 0, xpType: "growth" };
-
-  const ceiling = perAreaDailyXpCeiling(player.current_level, area.is_foundation);
+  const ceiling = perAreaDailyXpCeiling(currentLevel, isFoundation);
 
   const { data: areaTasks } = await supabase
     .from("tasks")
