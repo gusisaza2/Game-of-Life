@@ -37,7 +37,12 @@ export function HabitStreakCard({
   const color = areaColor(areaName).accent;
   const next = nextStreakMilestoneAfter(currentStreak);
   const nextXp = xpForStreakMilestone(next.multiplier, areaDailyCeiling);
-  const { isPending, flash, toggle } = useTaskCompletion(taskId, playerId, today, completed);
+  const {
+    isPending,
+    flash,
+    toggle,
+    completed: displayCompleted,
+  } = useTaskCompletion(taskId, playerId, today, completed);
 
   return (
     <div className="flex flex-col gap-1">
@@ -45,14 +50,14 @@ export function HabitStreakCard({
         type="button"
         onClick={toggle}
         disabled={isPending}
-        aria-pressed={completed}
-        aria-label={completed ? `Mark ${title} incomplete` : `Mark ${title} complete`}
+        aria-pressed={displayCompleted}
+        aria-label={displayCompleted ? `Mark ${title} incomplete` : `Mark ${title} complete`}
         style={{ color }}
         className="flex w-full items-center gap-3 rounded-xl border border-foreground/20 bg-surface p-3 text-left transition-colors hover:bg-surface-hover disabled:opacity-70"
       >
         <div className="relative shrink-0">
           <HabitStreakRing streak={currentStreak} color={color} />
-          {completed && (
+          {displayCompleted && (
             <span
               aria-hidden
               className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white"
@@ -64,7 +69,7 @@ export function HabitStreakCard({
         </div>
         <div className="flex flex-col gap-0.5">
           <span
-            className={`text-sm font-medium ${completed ? "text-foreground/40 line-through" : "text-foreground"}`}
+            className={`text-sm font-medium ${displayCompleted ? "text-foreground/40 line-through" : "text-foreground"}`}
           >
             {title}
           </span>

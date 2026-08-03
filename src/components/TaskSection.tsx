@@ -21,7 +21,12 @@ function TaskItem({
   playerId: string;
   today: string;
 }) {
-  const { isPending, flash, toggle } = useTaskCompletion(task.id, playerId, today, completed);
+  const {
+    isPending,
+    flash,
+    toggle,
+    completed: displayCompleted,
+  } = useTaskCompletion(task.id, playerId, today, completed);
   const color = areaColor(task.areaName);
 
   return (
@@ -37,13 +42,15 @@ function TaskItem({
         />
         <input
           type="checkbox"
-          checked={completed}
+          checked={displayCompleted}
           disabled={isPending}
           onChange={toggle}
           className="h-4 w-4 shrink-0"
           style={{ accentColor: color.accent }}
         />
-        <span className={completed ? "line-through text-foreground/35" : "text-foreground/90"}>
+        <span
+          className={displayCompleted ? "line-through text-foreground/35" : "text-foreground/90"}
+        >
           {task.title}
         </span>
         {flash && (
