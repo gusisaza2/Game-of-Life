@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* "Warm Dusk" -- deliberately warm-toned neutrals (a hint of brown/gold)
-     instead of clinical pure white/black, tying the base palette to the
-     Ship's dusk-at-the-dock sky rather than a generic dark-mode gray. */
-  --background: #fdf8f2;
-  --foreground: #2b241a;
+  /* "Deep Ocean" -- cool teal-navy neutrals instead of clinical pure
+     white/black, tying the base palette to looking out at the sea at
+     night rather than a generic dark-mode gray. */
+  --background: #f4f9f9;
+  --foreground: #132220;
   /* Good Days (Balance axis) vs Nivel (Effort axis) get distinct accent
      colors so the two independent progress signals read as different at a
      glance (design doc Section 2: two independent motivators). */
@@ -29,8 +29,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1c1611;
-    --foreground: #f2e9de;
+    --background: #0f1c1e;
+    --foreground: #e6f1ef;
     --accent-balance: #7c96ff;
     --accent-effort: #f0bb5c;
     --accent-primary: #2dd4bf;
