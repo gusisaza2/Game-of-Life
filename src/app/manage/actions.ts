@@ -167,3 +167,16 @@ export async function scheduleTaskActivation(formData: FormData) {
   revalidatePath("/manage");
   revalidatePath("/");
 }
+
+// Permanent, unlike Deactivate — also removes the task's completion
+// history (task_logs cascades on delete). Distinct from "inactive": an
+// inactive Task is still planned for later, a deleted one is gone.
+export async function deleteTask(formData: FormData) {
+  const taskId = String(formData.get("taskId"));
+
+  const supabase = await createClient();
+  await supabase.from("tasks").delete().eq("id", taskId);
+
+  revalidatePath("/manage");
+  revalidatePath("/");
+}

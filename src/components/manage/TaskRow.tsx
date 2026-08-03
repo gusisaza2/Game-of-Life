@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateTask, setTaskActive, scheduleTaskActivation } from "@/app/manage/actions";
+import { updateTask, setTaskActive, scheduleTaskActivation, deleteTask } from "@/app/manage/actions";
 import { areaColor } from "@/lib/area-colors";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { Badge } from "@/components/Badge";
@@ -34,6 +34,7 @@ export function TaskRow({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tier, setTier] = useState(task.tier);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const areaName = areas.find((a) => a.id === task.area_id)?.name;
@@ -48,7 +49,7 @@ export function TaskRow({
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
         <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span className={task.is_active ? "" : "text-foreground/40 line-through"}>
+          <span className={task.is_active ? "" : "text-foreground/50"}>
             {task.title}{" "}
             <span className="text-xs text-foreground/40">
               ({areaName}
@@ -56,35 +57,64 @@ export function TaskRow({
             </span>
           </span>
           {showTierBadge && <Badge>{TIER_LABELS[task.tier]}</Badge>}
+          {/* Not struck through — inactive just means "planned for later,"
+              not "done" or "cancelled," and strikethrough reads as the latter. */}
+          {!task.is_active && !isScheduled && <Badge tone="muted">Planned</Badge>}
           {isScheduled && <Badge tone="effort">Activates tomorrow</Badge>}
         </span>
         <div className="flex gap-2">
-          <button
-            onClick={() => setIsEditing(true)}
-            className="link-hover text-xs text-foreground/60"
-          >
-            Edit
-          </button>
-          {!task.is_active && (
-            <form
-              action={(formData) => startTransition(() => scheduleTaskActivation(formData))}
-            >
-              <input type="hidden" name="taskId" value={task.id} />
-              <input type="hidden" name="scheduled" value={(!isScheduled).toString()} />
-              <button disabled={isPending} className="link-hover text-xs text-foreground/60">
-                {isScheduled ? "Cancel schedule" : "Activate tomorrow"}
+          {confirmingDelete ? (
+            <>
+              <span className="text-xs text-foreground/60">Delete?</span>
+              <form action={(formData) => startTransition(() => deleteTask(formData))}>
+                <input type="hidden" name="taskId" value={task.id} />
+                <button disabled={isPending} className="text-xs font-medium text-red-500 hover:text-red-400">
+                  Confirm
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="link-hover text-xs text-foreground/60"
+              >
+                Cancel
               </button>
-            </form>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="text-xs text-foreground/40 hover:text-red-500"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="link-hover text-xs text-foreground/60"
+              >
+                Edit
+              </button>
+              {!task.is_active && (
+                <form
+                  action={(formData) => startTransition(() => scheduleTaskActivation(formData))}
+                >
+                  <input type="hidden" name="taskId" value={task.id} />
+                  <input type="hidden" name="scheduled" value={(!isScheduled).toString()} />
+                  <button disabled={isPending} className="link-hover text-xs text-foreground/60">
+                    {isScheduled ? "Cancel schedule" : "Activate tomorrow"}
+                  </button>
+                </form>
+              )}
+              <form action={(formData) => startTransition(() => setTaskActive(formData))}>
+                <input type="hidden" name="taskId" value={task.id} />
+                <input type="hidden" name="isActive" value={(!task.is_active).toString()} />
+                <button disabled={isPending} className="link-hover text-xs text-foreground/60">
+                  {task.is_active ? "Deactivate" : "Activate now"}
+                </button>
+              </form>
+            </>
           )}
-          <form
-            action={(formData) => startTransition(() => setTaskActive(formData))}
-          >
-            <input type="hidden" name="taskId" value={task.id} />
-            <input type="hidden" name="isActive" value={(!task.is_active).toString()} />
-            <button disabled={isPending} className="link-hover text-xs text-foreground/60">
-              {task.is_active ? "Deactivate" : "Activate now"}
-            </button>
-          </form>
         </div>
       </li>
     );
