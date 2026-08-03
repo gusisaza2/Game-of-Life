@@ -9,7 +9,7 @@ export function GoalForm({ playerId, areas }: { playerId: string; areas: Area[] 
   return (
     <form
       action={createGoal}
-      className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4"
+      className="flex flex-col gap-2 rounded-lg border border-foreground/20 bg-surface p-4"
     >
       <input type="hidden" name="playerId" value={playerId} />
 

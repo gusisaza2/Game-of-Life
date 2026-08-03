@@ -12,8 +12,8 @@
      by system theme for now. */
   --background: #e9f9f0;
   --foreground: #16231c;
-  --surface: #ffffff;
-  --surface-hover: #eef9f3;
+  --surface: #f7fbf8;
+  --surface-hover: #eef5f0;
   /* Good Days (Balance axis) vs Nivel (Effort axis) get distinct accent
      colors so the two independent progress signals read as different at a
      glance (design doc Section 2: two independent motivators). */

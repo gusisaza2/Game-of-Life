@@ -30,7 +30,7 @@ function HabitDetail({ habit, onBack }: { habit: HabitStat; onBack: () => void }
       </button>
 
       <div
-        className="flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-surface p-5"
+        className="flex flex-col gap-4 rounded-2xl border border-foreground/20 bg-surface p-5"
         style={{ borderLeft: `3px solid ${color}` }}
       >
         <div>
@@ -94,11 +94,11 @@ export function HabitStatsView({
   return (
     <div className="w-full max-w-md flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-0.5 rounded-xl border border-foreground/10 bg-surface p-4">
+        <div className="flex flex-col gap-0.5 rounded-xl border border-foreground/20 bg-surface p-4">
           <span className="text-xs uppercase tracking-wide text-foreground/45">Avg. this month</span>
           <span className="text-2xl font-semibold tabular-nums">{formatPct(aggregate.avgRate)}</span>
         </div>
-        <div className="flex flex-col gap-0.5 rounded-xl border border-foreground/10 bg-surface p-4">
+        <div className="flex flex-col gap-0.5 rounded-xl border border-foreground/20 bg-surface p-4">
           <span className="text-xs uppercase tracking-wide text-foreground/45">All-time total</span>
           <span className="text-2xl font-semibold tabular-nums">{aggregate.totalLifetime}</span>
         </div>
@@ -113,7 +113,7 @@ export function HabitStatsView({
               type="button"
               onClick={() => setSelectedId(habit.id)}
               style={{ borderLeft: `3px solid ${color}` }}
-              className="flex items-center justify-between rounded-xl border border-foreground/10 bg-surface p-3 text-left transition-colors hover:bg-surface-hover"
+              className="flex items-center justify-between rounded-xl border border-foreground/20 bg-surface p-3 text-left transition-colors hover:bg-surface-hover"
             >
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium">{habit.title}</span>

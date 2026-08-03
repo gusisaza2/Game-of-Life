@@ -27,7 +27,7 @@ function TaskItem({
   return (
     <li className="flex flex-col gap-1">
       <label
-        className="group flex items-center gap-3 rounded-xl border border-foreground/10 bg-surface pl-3 pr-4 py-3 cursor-pointer transition-colors hover:bg-surface-hover"
+        className="group flex items-center gap-3 rounded-xl border border-foreground/20 bg-surface pl-3 pr-4 py-3 cursor-pointer transition-colors hover:bg-surface-hover"
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
         <span

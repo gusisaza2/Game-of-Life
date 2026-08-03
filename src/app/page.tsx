@@ -114,7 +114,7 @@ export default async function TodayPage() {
           </Link>
         </header>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-surface p-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-foreground/20 bg-surface p-5">
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-foreground/45">
               XP today

@@ -20,7 +20,7 @@ export function TaskForm({
   return (
     <form
       action={createTask}
-      className="flex flex-col gap-2 rounded-lg border border-foreground/10 p-4"
+      className="flex flex-col gap-2 rounded-lg border border-foreground/20 bg-surface p-4"
     >
       <input type="hidden" name="playerId" value={playerId} />
       <input type="hidden" name="isActive" value="true" />
