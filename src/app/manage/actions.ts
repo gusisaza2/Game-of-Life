@@ -49,6 +49,33 @@ export async function setGoalStatus(formData: FormData) {
   revalidatePath("/");
 }
 
+// Permanent, unlike Complete/Abandon -- also removes every Milestone under
+// the Goal and every Task linked to those Milestones (task_logs cascades
+// on task delete, same as deleteTask below). Deleted explicitly and in
+// dependency order rather than relying on DB cascade rules, since a Main
+// Task can never exist with a null milestone_id (CLAUDE.md's validation
+// rule) -- leaving one dangling by only deleting the Milestone would be
+// invalid state, not an edge case to guard against.
+export async function deleteGoal(formData: FormData) {
+  const goalId = String(formData.get("goalId"));
+  const supabase = await createClient();
+
+  const { data: milestones } = await supabase
+    .from("milestones")
+    .select("id")
+    .eq("goal_id", goalId);
+  const milestoneIds = (milestones ?? []).map((m) => m.id);
+
+  if (milestoneIds.length > 0) {
+    await supabase.from("tasks").delete().in("milestone_id", milestoneIds);
+    await supabase.from("milestones").delete().eq("goal_id", goalId);
+  }
+  await supabase.from("goals").delete().eq("id", goalId);
+
+  revalidatePath("/manage");
+  revalidatePath("/");
+}
+
 export async function createMilestone(formData: FormData): Promise<{ id: string } | null> {
   const goalId = String(formData.get("goalId"));
   const title = String(formData.get("title") ?? "").trim();

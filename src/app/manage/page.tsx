@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { GoalWizard } from "@/components/manage/GoalWizard";
-import { MilestoneForm } from "@/components/manage/MilestoneForm";
-import { MilestoneRow } from "@/components/manage/MilestoneRow";
+import { GoalsSection } from "@/components/manage/GoalsSection";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
-import { areaColor } from "@/lib/area-colors";
-import { AreaIcon } from "@/components/AreaIcon";
 import { getTodayDateString } from "@/lib/today";
 import { TIER_LABELS } from "@/lib/task-tiers";
-import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
-import { setGoalStatus } from "./actions";
 
 export default async function ManagePage() {
   const supabase = await createClient();
@@ -56,7 +50,6 @@ export default async function ManagePage() {
     supabase.from("milestones").select("id, title, goals(title)"),
   ]);
 
-  const areasById = new Map((areas ?? []).map((area) => [area.id, area.name]));
   const milestoneOptions = (milestoneRows ?? []).map((m) => ({
     id: m.id,
     label: `${(m.goals as unknown as { title: string }).title} → ${m.title}`,
@@ -72,7 +65,7 @@ export default async function ManagePage() {
   // of the flat Tasks list below, so "everything left to do for this
   // Milestone" (active or still-planned) reads as one group.
   const standaloneTasks = (tasks ?? []).filter((t) => !t.milestone_id);
-  const tasksByMilestoneId = new Map<string, typeof tasks>();
+  const tasksByMilestoneId = new Map<string, NonNullable<typeof tasks>>();
   for (const task of tasks ?? []) {
     if (!task.milestone_id) continue;
     const list = tasksByMilestoneId.get(task.milestone_id) ?? [];
@@ -110,103 +103,14 @@ export default async function ManagePage() {
         </Link>
       </header>
 
-      <section className="w-full max-w-md flex flex-col gap-3">
-        <SectionHeading>Goals</SectionHeading>
-
-        {(goals ?? []).map((goal) => {
-          const goalAreaName = areasById.get(goal.area_id);
-          const goalColor = areaColor(goalAreaName);
-          const totalMilestones = goal.milestones.length;
-          const completedMilestones = goal.milestones.filter(
-            (m) => m.status === "completed",
-          ).length;
-          const milestonePct =
-            totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
-
-          return (
-          <div
-            key={goal.id}
-            className="flex flex-col gap-3 rounded-lg border border-foreground/20 bg-surface p-4 transition-colors hover:bg-surface-hover"
-            style={{ borderLeft: `3px solid ${goalColor.accent}` }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: goalColor.soft, color: goalColor.accent }}
-                >
-                  <AreaIcon areaName={goalAreaName} />
-                </span>
-                <div>
-                  <p className="font-medium">{goal.title}</p>
-                  <p className="text-xs text-foreground/60">{goalAreaName}</p>
-                </div>
-                {goal.status === "completed" && <Badge tone="effort">Completed</Badge>}
-                {goal.status === "abandoned" && <Badge tone="muted">Abandoned</Badge>}
-              </div>
-              {goal.status === "active" && (
-                <div className="flex gap-2">
-                  <form action={setGoalStatus}>
-                    <input type="hidden" name="goalId" value={goal.id} />
-                    <input type="hidden" name="status" value="completed" />
-                    <button className="link-hover text-xs text-foreground/60">Complete</button>
-                  </form>
-                  <form action={setGoalStatus}>
-                    <input type="hidden" name="goalId" value={goal.id} />
-                    <input type="hidden" name="status" value="abandoned" />
-                    <button className="link-hover text-xs text-foreground/60">Abandon</button>
-                  </form>
-                </div>
-              )}
-            </div>
-
-            {totalMilestones > 0 && (
-              <div className="flex items-center gap-2 pl-11">
-                <div className="h-1.5 flex-1 rounded-full bg-foreground/10">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-500 ease-out"
-                    style={{ width: `${milestonePct}%`, backgroundColor: goalColor.accent }}
-                  />
-                </div>
-                <span className="shrink-0 text-[11px] tabular-nums text-foreground/45">
-                  {completedMilestones}/{totalMilestones}
-                </span>
-              </div>
-            )}
-
-            <ul className="flex flex-col gap-3 pl-11">
-              {[...goal.milestones]
-                .sort((a, b) => a.order_index - b.order_index)
-                .map((milestone) => {
-                  const taskRows = (tasksByMilestoneId.get(milestone.id) ?? []).map((task) => ({
-                    task,
-                    milestoneOptions: milestoneOptionsFor(task),
-                  }));
-                  return (
-                    <MilestoneRow
-                      key={milestone.id}
-                      milestone={milestone}
-                      taskRows={taskRows}
-                      areas={areas ?? []}
-                      canAddTask={goal.status === "active" && milestone.status === "active"}
-                      playerId={player.id}
-                      defaultAreaId={goal.area_id}
-                    />
-                  );
-                })}
-            </ul>
-
-            {goal.status === "active" && (
-              <div className="pl-11">
-                <MilestoneForm goalId={goal.id} />
-              </div>
-            )}
-          </div>
-          );
-        })}
-
-        <GoalWizard playerId={player.id} areas={areas ?? []} />
-      </section>
+      <GoalsSection
+        goals={goals ?? []}
+        areas={areas ?? []}
+        playerId={player.id}
+        tasksByMilestoneId={tasksByMilestoneId}
+        milestoneOptions={milestoneOptions}
+        milestoneLabelsById={milestoneLabelsById}
+      />
 
       <section className="w-full max-w-md flex flex-col gap-3">
         <SectionHeading>Tasks</SectionHeading>
