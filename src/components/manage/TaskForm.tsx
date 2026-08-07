@@ -19,7 +19,9 @@ export function TaskForm({
 
   return (
     <form
-      action={createTask}
+      action={async (formData) => {
+        await createTask(formData);
+      }}
       className="flex flex-col gap-2 rounded-lg border border-foreground/20 bg-surface p-4"
     >
       <input type="hidden" name="playerId" value={playerId} />

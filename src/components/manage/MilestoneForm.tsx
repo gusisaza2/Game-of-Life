@@ -4,7 +4,12 @@ import { createMilestone } from "@/app/manage/actions";
 
 export function MilestoneForm({ goalId }: { goalId: string }) {
   return (
-    <form action={createMilestone} className="flex gap-2">
+    <form
+      action={async (formData) => {
+        await createMilestone(formData);
+      }}
+      className="flex gap-2"
+    >
       <input type="hidden" name="goalId" value={goalId} />
       <input
         name="title"

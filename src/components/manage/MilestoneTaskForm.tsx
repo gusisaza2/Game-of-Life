@@ -25,7 +25,9 @@ export function MilestoneTaskForm({
 
   return (
     <form
-      action={createTask}
+      action={async (formData) => {
+        await createTask(formData);
+      }}
       className="flex flex-col gap-1.5 rounded-lg border border-dashed border-foreground/15 p-2.5"
     >
       <input type="hidden" name="playerId" value={playerId} />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { GoalForm } from "@/components/manage/GoalForm";
+import { GoalWizard } from "@/components/manage/GoalWizard";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
 import { MilestoneRow } from "@/components/manage/MilestoneRow";
 import { TaskForm } from "@/components/manage/TaskForm";
@@ -205,7 +205,7 @@ export default async function ManagePage() {
           );
         })}
 
-        <GoalForm playerId={player.id} areas={areas ?? []} />
+        <GoalWizard playerId={player.id} areas={areas ?? []} />
       </section>
 
       <section className="w-full max-w-md flex flex-col gap-3">

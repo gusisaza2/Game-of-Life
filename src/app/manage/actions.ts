@@ -12,25 +12,30 @@ function resolveMilestoneId(tier: string, milestoneId: string): string | null {
   return null;
 }
 
-export async function createGoal(formData: FormData) {
+export async function createGoal(formData: FormData): Promise<{ id: string } | null> {
   const playerId = String(formData.get("playerId"));
   const title = String(formData.get("title") ?? "").trim();
   const areaId = String(formData.get("areaId"));
   const secondaryAreaIds = formData.getAll("secondaryAreaIds").map(String);
 
-  if (!title || !areaId) return;
+  if (!title || !areaId) return null;
 
   const supabase = await createClient();
-  await supabase.from("goals").insert({
-    player_id: playerId,
-    area_id: areaId,
-    secondary_area_ids: secondaryAreaIds.filter((id) => id !== areaId),
-    title,
-    status: "active",
-    source: "custom",
-  });
+  const { data } = await supabase
+    .from("goals")
+    .insert({
+      player_id: playerId,
+      area_id: areaId,
+      secondary_area_ids: secondaryAreaIds.filter((id) => id !== areaId),
+      title,
+      status: "active",
+      source: "custom",
+    })
+    .select("id")
+    .single();
 
   revalidatePath("/manage");
+  return data ? { id: data.id } : null;
 }
 
 export async function setGoalStatus(formData: FormData) {
@@ -44,10 +49,10 @@ export async function setGoalStatus(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function createMilestone(formData: FormData) {
+export async function createMilestone(formData: FormData): Promise<{ id: string } | null> {
   const goalId = String(formData.get("goalId"));
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) return;
+  if (!title) return null;
 
   const supabase = await createClient();
 
@@ -61,17 +66,22 @@ export async function createMilestone(formData: FormData) {
 
   const nextOrderIndex = (existing?.order_index ?? 0) + 1;
 
-  await supabase.from("milestones").insert({
-    goal_id: goalId,
-    title,
-    order_index: nextOrderIndex,
-    status: "active",
-  });
+  const { data } = await supabase
+    .from("milestones")
+    .insert({
+      goal_id: goalId,
+      title,
+      order_index: nextOrderIndex,
+      status: "active",
+    })
+    .select("id")
+    .single();
 
   revalidatePath("/manage");
+  return data ? { id: data.id } : null;
 }
 
-export async function createTask(formData: FormData) {
+export async function createTask(formData: FormData): Promise<{ id: string } | null> {
   const playerId = String(formData.get("playerId"));
   const title = String(formData.get("title") ?? "").trim();
   const tier = String(formData.get("tier"));
@@ -85,22 +95,27 @@ export async function createTask(formData: FormData) {
   // existing immediate-activation behavior.
   const isActive = formData.get("isActive") !== "false";
 
-  if (!title || !areaId) return;
-  if (tier === "main_task" && !milestoneId) return;
+  if (!title || !areaId) return null;
+  if (tier === "main_task" && !milestoneId) return null;
 
   const supabase = await createClient();
-  await supabase.from("tasks").insert({
-    player_id: playerId,
-    milestone_id: resolveMilestoneId(tier, milestoneId),
-    area_id: areaId,
-    tier,
-    title,
-    recurrence,
-    is_active: isActive,
-  });
+  const { data } = await supabase
+    .from("tasks")
+    .insert({
+      player_id: playerId,
+      milestone_id: resolveMilestoneId(tier, milestoneId),
+      area_id: areaId,
+      tier,
+      title,
+      recurrence,
+      is_active: isActive,
+    })
+    .select("id")
+    .single();
 
   revalidatePath("/manage");
   revalidatePath("/");
+  return data ? { id: data.id } : null;
 }
 
 export async function updateTask(formData: FormData) {
