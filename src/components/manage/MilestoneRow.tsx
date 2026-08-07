@@ -43,8 +43,19 @@ export function MilestoneRow({
   return (
     <li className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-sm text-foreground/80">
-          {milestone.order_index}. {milestone.title}
+        <p className="flex items-center gap-2 text-sm text-foreground/80">
+          <span
+            aria-hidden
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+            style={
+              milestone.status === "completed"
+                ? { backgroundColor: "var(--accent-primary)", color: "var(--on-accent-primary)" }
+                : { border: "1.5px solid var(--foreground)", opacity: 0.3 }
+            }
+          >
+            {milestone.status === "completed" ? "✓" : ""}
+          </span>
+          {milestone.title}
           {milestone.status === "completed" && <Badge tone="effort">Done</Badge>}
         </p>
         <div className="flex shrink-0 gap-3 text-xs">

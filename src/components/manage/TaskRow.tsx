@@ -5,6 +5,7 @@ import { updateTask, setTaskActive, scheduleTaskActivation, deleteTask } from "@
 import { areaColor } from "@/lib/area-colors";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { Badge } from "@/components/Badge";
+import { AreaIcon } from "@/components/AreaIcon";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -45,24 +46,34 @@ export function TaskRow({
 
     return (
       <li
-        className="flex items-center justify-between rounded border border-foreground/20 bg-surface px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-foreground/20 bg-surface px-3 py-2.5 text-sm transition-colors hover:bg-surface-hover"
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span className={task.is_active ? "" : "text-foreground/50"}>
-            {task.title}{" "}
-            <span className="text-xs text-foreground/40">
-              ({areaName}
-              {milestoneLabel ? ` · ${milestoneLabel}` : ""})
-            </span>
+        <div className="flex min-w-[140px] flex-1 items-center gap-3">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: color.soft, color: color.accent }}
+          >
+            <AreaIcon areaName={areaName} className="h-3.5 w-3.5" />
           </span>
-          {showTierBadge && <Badge>{TIER_LABELS[task.tier]}</Badge>}
-          {/* Not struck through — inactive just means "planned for later,"
-              not "done" or "cancelled," and strikethrough reads as the latter. */}
-          {!task.is_active && !isScheduled && <Badge tone="muted">Planned</Badge>}
-          {isScheduled && <Badge tone="effort">Activates tomorrow</Badge>}
-        </span>
-        <div className="flex gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span
+              className={`flex flex-wrap items-center gap-1.5 ${task.is_active ? "" : "text-foreground/50"}`}
+            >
+              {task.title}
+              {showTierBadge && <Badge>{TIER_LABELS[task.tier]}</Badge>}
+              {/* Not struck through — inactive just means "planned for later,"
+                  not "done" or "cancelled," and strikethrough reads as the latter. */}
+              {!task.is_active && !isScheduled && <Badge tone="muted">Planned</Badge>}
+              {isScheduled && <Badge tone="effort">Activates tomorrow</Badge>}
+            </span>
+            <span className="text-xs text-foreground/40">
+              {areaName}
+              {milestoneLabel ? ` · ${milestoneLabel}` : ""}
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-2">
           {confirmingDelete ? (
             <>
               <span className="text-xs text-foreground/60">Delete?</span>

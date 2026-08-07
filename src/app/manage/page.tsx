@@ -7,6 +7,7 @@ import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { areaColor } from "@/lib/area-colors";
+import { AreaIcon } from "@/components/AreaIcon";
 import { getTodayDateString } from "@/lib/today";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { Badge } from "@/components/Badge";
@@ -112,17 +113,33 @@ export default async function ManagePage() {
       <section className="w-full max-w-md flex flex-col gap-3">
         <SectionHeading>Goals</SectionHeading>
 
-        {(goals ?? []).map((goal) => (
+        {(goals ?? []).map((goal) => {
+          const goalAreaName = areasById.get(goal.area_id);
+          const goalColor = areaColor(goalAreaName);
+          const totalMilestones = goal.milestones.length;
+          const completedMilestones = goal.milestones.filter(
+            (m) => m.status === "completed",
+          ).length;
+          const milestonePct =
+            totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+
+          return (
           <div
             key={goal.id}
-            className="flex flex-col gap-2 rounded-lg border border-foreground/20 bg-surface p-4 transition-colors hover:bg-surface-hover"
-            style={{ borderLeft: `3px solid ${areaColor(areasById.get(goal.area_id)).accent}` }}
+            className="flex flex-col gap-3 rounded-lg border border-foreground/20 bg-surface p-4 transition-colors hover:bg-surface-hover"
+            style={{ borderLeft: `3px solid ${goalColor.accent}` }}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: goalColor.soft, color: goalColor.accent }}
+                >
+                  <AreaIcon areaName={goalAreaName} />
+                </span>
                 <div>
                   <p className="font-medium">{goal.title}</p>
-                  <p className="text-xs text-foreground/60">{areasById.get(goal.area_id)}</p>
+                  <p className="text-xs text-foreground/60">{goalAreaName}</p>
                 </div>
                 {goal.status === "completed" && <Badge tone="effort">Completed</Badge>}
                 {goal.status === "abandoned" && <Badge tone="muted">Abandoned</Badge>}
@@ -143,7 +160,21 @@ export default async function ManagePage() {
               )}
             </div>
 
-            <ul className="flex flex-col gap-3">
+            {totalMilestones > 0 && (
+              <div className="flex items-center gap-2 pl-11">
+                <div className="h-1.5 flex-1 rounded-full bg-foreground/10">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-500 ease-out"
+                    style={{ width: `${milestonePct}%`, backgroundColor: goalColor.accent }}
+                  />
+                </div>
+                <span className="shrink-0 text-[11px] tabular-nums text-foreground/45">
+                  {completedMilestones}/{totalMilestones}
+                </span>
+              </div>
+            )}
+
+            <ul className="flex flex-col gap-3 pl-11">
               {[...goal.milestones]
                 .sort((a, b) => a.order_index - b.order_index)
                 .map((milestone) => {
@@ -165,9 +196,14 @@ export default async function ManagePage() {
                 })}
             </ul>
 
-            {goal.status === "active" && <MilestoneForm goalId={goal.id} />}
+            {goal.status === "active" && (
+              <div className="pl-11">
+                <MilestoneForm goalId={goal.id} />
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
 
         <GoalForm playerId={player.id} areas={areas ?? []} />
       </section>
