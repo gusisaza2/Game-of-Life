@@ -60,8 +60,8 @@ function GoalCard({
       className="flex flex-col gap-3 rounded-lg border border-foreground/20 bg-surface p-4 transition-colors hover:bg-surface-hover"
       style={{ borderLeft: `3px solid ${color.accent}` }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-[140px] flex-1 items-center gap-3">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
             style={{ backgroundColor: color.soft, color: color.accent }}

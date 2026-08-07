@@ -42,8 +42,8 @@ export function MilestoneRow({
 
   return (
     <li className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-sm text-foreground/80">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <p className="flex min-w-[120px] flex-1 items-center gap-2 text-sm text-foreground/80">
           <span
             aria-hidden
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
