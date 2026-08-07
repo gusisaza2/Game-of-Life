@@ -55,10 +55,15 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   const [taskTitle, setTaskTitle] = useState("");
   const [taskTier, setTaskTier] = useState("habit");
   const [taskAreaId, setTaskAreaId] = useState("");
-  const [taskMilestoneId, setTaskMilestoneId] = useState("");
   const [taskRecurrence, setTaskRecurrence] = useState("daily");
   const [taskActivateNow, setTaskActivateNow] = useState(false);
-  const [addedTasksCount, setAddedTasksCount] = useState(0);
+  // Which Milestone (by index) Step 3 is currently guiding the player to
+  // add Tasks for -- the step walks through them one at a time instead of
+  // asking the player to pick a Milestone from a dropdown per Task.
+  const [taskMilestoneIndex, setTaskMilestoneIndex] = useState(0);
+  const [tasksByMilestone, setTasksByMilestone] = useState<
+    Record<string, { id: string; title: string }[]>
+  >({});
 
   const goalColor = areaColor(areas.find((a) => a.id === areaId)?.name);
 
@@ -74,10 +79,10 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
     setTaskTitle("");
     setTaskTier("habit");
     setTaskAreaId("");
-    setTaskMilestoneId("");
     setTaskRecurrence("daily");
     setTaskActivateNow(false);
-    setAddedTasksCount(0);
+    setTaskMilestoneIndex(0);
+    setTasksByMilestone({});
   }
 
   function handleCreateGoal() {
@@ -113,8 +118,8 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   }
 
   function handleAddTask() {
-    if (!taskTitle.trim() || !taskAreaId) return;
-    if (taskTier === "main_task" && !taskMilestoneId) return;
+    const currentMilestone = milestones[taskMilestoneIndex];
+    if (!taskTitle.trim() || !taskAreaId || !currentMilestone) return;
     startTransition(async () => {
       const fd = new FormData();
       fd.set("playerId", playerId);
@@ -122,13 +127,18 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
       fd.set("tier", taskTier);
       fd.set("areaId", taskAreaId);
       fd.set("recurrence", taskRecurrence);
-      if (taskMilestoneId) fd.set("milestoneId", taskMilestoneId);
+      fd.set("milestoneId", currentMilestone.id);
       fd.set("isActive", taskActivateNow ? "true" : "false");
       const result = await createTask(fd);
       if (result) {
-        setAddedTasksCount((n) => n + 1);
+        setTasksByMilestone((prev) => ({
+          ...prev,
+          [currentMilestone.id]: [
+            ...(prev[currentMilestone.id] ?? []),
+            { id: result.id, title: taskTitle.trim() },
+          ],
+        }));
         setTaskTitle("");
-        setTaskMilestoneId("");
         setTaskActivateNow(false);
       }
     });
@@ -137,6 +147,25 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   function handleFinish() {
     reset();
     setOpen(false);
+  }
+
+  function goToTasksStep() {
+    setTaskMilestoneIndex(0);
+    setStep("tasks");
+  }
+
+  // Advances the "which Milestone are we adding Tasks for" pointer --
+  // whether the player added Tasks for this one or skipped it. On the
+  // last Milestone, this closes the wizard instead.
+  function goToNextMilestone() {
+    if (taskMilestoneIndex < milestones.length - 1) {
+      setTaskMilestoneIndex((i) => i + 1);
+      setTaskTitle("");
+      setTaskTier("habit");
+      setTaskActivateNow(false);
+    } else {
+      handleFinish();
+    }
   }
 
   if (!open) {
@@ -272,7 +301,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
 
           <button
             type="button"
-            onClick={() => setStep("tasks")}
+            onClick={goToTasksStep}
             className="link-hover self-start text-sm font-medium text-foreground/70"
           >
             {milestones.length > 0 ? "Continue →" : "Skip for now →"}
@@ -280,121 +309,183 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
         </div>
       )}
 
-      {step === "tasks" && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-              style={{ backgroundColor: goalColor.soft, color: goalColor.accent }}
-            >
-              <AreaIcon areaName={areas.find((a) => a.id === areaId)?.name} className="h-3.5 w-3.5" />
-            </span>
-            <span className="font-medium">{goalTitle}</span>
-            {addedTasksCount > 0 && (
-              <span className="text-xs text-foreground/40">
-                · {addedTasksCount} task{addedTasksCount === 1 ? "" : "s"} added
-              </span>
-            )}
-          </div>
-
-          <input
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-            placeholder="Task title (optional — you can skip this step)"
-            className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-          />
-
-          <div className="flex gap-2">
-            <select
-              value={taskTier}
-              onChange={(e) => setTaskTier(e.target.value)}
-              className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-            >
-              <option value="habit">Habit</option>
-              <option value="main_task">Main Task</option>
-            </select>
-            <select
-              value={taskAreaId}
-              onChange={(e) => setTaskAreaId(e.target.value)}
-              className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-            >
-              {areas.map((area) => (
-                <option key={area.id} value={area.id}>
-                  {area.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={taskRecurrence}
-              onChange={(e) => setTaskRecurrence(e.target.value)}
-              className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-
-          {milestones.length > 0 ? (
-            <select
-              value={taskMilestoneId}
-              onChange={(e) => setTaskMilestoneId(e.target.value)}
-              className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-            >
-              <option value="">
-                {taskTier === "main_task" ? "Link to a Milestone…" : "No linked Milestone (standalone habit)"}
-              </option>
-              {milestones.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title}
-                </option>
-              ))}
-            </select>
-          ) : (
-            taskTier === "main_task" && (
-              <p className="text-xs text-foreground/40">
-                Main Tasks need a Milestone — go back and add one, or switch this to a Habit.
-              </p>
-            )
-          )}
-
-          <label className="flex items-center gap-1.5 text-xs text-foreground/60">
-            <input
-              type="checkbox"
-              checked={taskActivateNow}
-              onChange={(e) => setTaskActivateNow(e.target.checked)}
-              className="h-3.5 w-3.5"
-            />
-            Activate now (otherwise planned for later)
-          </label>
-
-          <button
-            type="button"
-            onClick={handleAddTask}
-            disabled={isPending || !taskTitle.trim() || (taskTier === "main_task" && !taskMilestoneId)}
-            className="btn-primary self-start rounded px-3 py-1 text-sm disabled:opacity-60"
-          >
-            Add task
-          </button>
-
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setStep("milestones")}
-              className="link-hover text-xs text-foreground/50"
-            >
-              ← Back to Milestones
-            </button>
+      {step === "tasks" &&
+        (milestones.length === 0 ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-foreground/60">
+              No Milestones yet, so there&apos;s nothing to attach Tasks to — you can always add
+              both from the Goal card below.
+            </p>
             <button
               type="button"
               onClick={handleFinish}
-              className="link-hover text-sm font-medium text-foreground/70"
+              className="btn-primary self-start rounded px-3 py-1 text-sm"
             >
-              Done →
+              Done
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          (() => {
+            const currentMilestone = milestones[taskMilestoneIndex];
+            const currentTasks = tasksByMilestone[currentMilestone.id] ?? [];
+            const isLast = taskMilestoneIndex === milestones.length - 1;
+
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: goalColor.soft, color: goalColor.accent }}
+                  >
+                    <AreaIcon areaName={areas.find((a) => a.id === areaId)?.name} className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="font-medium">{goalTitle}</span>
+                </div>
+
+                {/* Guides the player through one Milestone at a time instead
+                    of a generic "which Milestone does this belong to"
+                    picker -- every Task added below is automatically
+                    attached to this one. */}
+                <div
+                  className="flex items-center gap-3 rounded-lg p-3"
+                  style={{ backgroundColor: goalColor.soft }}
+                >
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{ backgroundColor: goalColor.accent, color: "var(--on-accent-primary)" }}
+                  >
+                    {taskMilestoneIndex + 1}
+                  </span>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide" style={{ color: goalColor.accent }}>
+                      Milestone {taskMilestoneIndex + 1} of {milestones.length}
+                    </p>
+                    <p className="text-sm font-medium">{currentMilestone.title}</p>
+                  </div>
+                </div>
+
+                {currentTasks.length > 0 && (
+                  <ul className="flex flex-col gap-1.5">
+                    {currentTasks.map((t) => (
+                      <li key={t.id} className="flex items-center gap-2 text-sm text-foreground/80">
+                        <span
+                          aria-hidden
+                          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                          style={{ backgroundColor: "var(--accent-primary)", color: "var(--on-accent-primary)" }}
+                        >
+                          ✓
+                        </span>
+                        {t.title}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <input
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTask();
+                    }
+                  }}
+                  placeholder={`A task for "${currentMilestone.title}"…`}
+                  className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+                />
+
+                <div className="flex gap-1.5">
+                  {(["habit", "main_task"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTaskTier(t)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-sm font-medium transition-colors ${
+                        taskTier === t ? "" : "border-foreground/20 text-foreground/60"
+                      }`}
+                      style={
+                        taskTier === t
+                          ? { backgroundColor: goalColor.soft, borderColor: goalColor.accent, color: goalColor.accent }
+                          : undefined
+                      }
+                    >
+                      {t === "habit" ? "Habit" : "Main Task"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={taskAreaId}
+                    onChange={(e) => setTaskAreaId(e.target.value)}
+                    className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+                  >
+                    {areas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={taskRecurrence}
+                    onChange={(e) => setTaskRecurrence(e.target.value)}
+                    className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+
+                <label className="flex items-center gap-1.5 text-xs text-foreground/60">
+                  <input
+                    type="checkbox"
+                    checked={taskActivateNow}
+                    onChange={(e) => setTaskActivateNow(e.target.checked)}
+                    className="h-3.5 w-3.5"
+                  />
+                  Activate now (otherwise planned for later)
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleAddTask}
+                  disabled={isPending || !taskTitle.trim()}
+                  className="btn-primary self-start rounded px-3 py-1 text-sm disabled:opacity-60"
+                >
+                  Add task
+                </button>
+
+                <p className="text-xs text-foreground/40">
+                  Try 2-3 tasks to get this milestone moving — or skip it for now.
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setStep("milestones")}
+                    className="link-hover text-xs text-foreground/50"
+                  >
+                    ← Back to Milestones
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToNextMilestone}
+                    className="link-hover text-sm font-medium text-foreground/70"
+                  >
+                    {currentTasks.length > 0
+                      ? isLast
+                        ? "Done →"
+                        : "Next milestone →"
+                      : isLast
+                        ? "Skip & finish →"
+                        : "Skip this milestone →"}
+                  </button>
+                </div>
+              </div>
+            );
+          })()
+        ))}
     </div>
   );
 }
