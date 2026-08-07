@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createGoal, createMilestone, createTask } from "@/app/manage/actions";
 import { areaColor } from "@/lib/area-colors";
 import { AreaIcon } from "@/components/AreaIcon";
@@ -66,6 +66,18 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   >({});
 
   const goalColor = areaColor(areas.find((a) => a.id === areaId)?.name);
+
+  // Full-screen takeover while open -- lock the page behind it so it can't
+  // scroll through underneath (mostly a mobile Safari rubber-banding
+  // concern, but harmless everywhere else).
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   function reset() {
     setStep("goal");
@@ -181,16 +193,17 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-foreground/20 bg-surface p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-foreground/45">
-          New Goal · Step {STEPS.indexOf(step) + 1} of {STEPS.length}
-        </span>
-        <button type="button" onClick={handleFinish} className="link-hover text-xs text-foreground/50">
-          {goalId ? "Done" : "Cancel"}
-        </button>
-      </div>
-      <StepDots step={step} />
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-background">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col gap-4 p-6">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-foreground/45">
+            New Goal · Step {STEPS.indexOf(step) + 1} of {STEPS.length}
+          </span>
+          <button type="button" onClick={handleFinish} className="link-hover text-xs text-foreground/50">
+            {goalId ? "Done" : "Cancel"}
+          </button>
+        </div>
+        <StepDots step={step} />
 
       {step === "goal" && (
         <div className="flex flex-col gap-2">
@@ -486,6 +499,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
             );
           })()
         ))}
+      </div>
     </div>
   );
 }
