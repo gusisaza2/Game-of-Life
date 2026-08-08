@@ -39,6 +39,10 @@ function StepDots({ step }: { step: Step }) {
 // up normally in the Goals list below.
 export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[] }) {
   const [open, setOpen] = useState(false);
+  // Drives the enter transition: mounts in its "before" state, then flips
+  // a frame later so the browser actually animates the change instead of
+  // painting the "after" state immediately.
+  const [entered, setEntered] = useState(false);
   const [step, setStep] = useState<Step>("goal");
   const [isPending, startTransition] = useTransition();
 
@@ -77,6 +81,11 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
     return () => {
       document.body.style.overflow = previousOverflow;
     };
+  }, [open]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntered(open));
+    return () => cancelAnimationFrame(id);
   }, [open]);
 
   function reset() {
@@ -193,8 +202,16 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-background">
-      <div className="mx-auto flex min-h-full w-full max-w-md flex-col gap-4 p-6">
+    <div
+      className={`fixed inset-0 z-50 overflow-y-auto bg-background transition-opacity duration-300 ease-out ${
+        entered ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <div
+        className={`mx-auto flex min-h-full w-full max-w-md flex-col gap-4 p-6 transition-transform duration-300 ease-out ${
+          entered ? "translate-y-0" : "translate-y-4"
+        }`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-foreground/45">
             New Goal · Step {STEPS.indexOf(step) + 1} of {STEPS.length}
