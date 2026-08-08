@@ -139,11 +139,23 @@ export async function backfillGoodDays(
 ): Promise<{ results: GoodDayResult[]; player: PlayerLevelState | null }> {
   const supabase = await createClient();
 
-  const { data: playerRow } = await supabase
-    .from("players")
-    .select("current_level, cumulative_xp, lifetime_good_day_count, last_nivel_reached")
-    .eq("id", playerId)
-    .single();
+  // lastFinalized doesn't depend on playerRow (or vice versa) -- fetched
+  // together instead of one after the other. windowGoodDayCount below
+  // still has to wait, since it genuinely needs player.current_level.
+  const [{ data: playerRow }, { data: lastFinalized }] = await Promise.all([
+    supabase
+      .from("players")
+      .select("current_level, cumulative_xp, lifetime_good_day_count, last_nivel_reached")
+      .eq("id", playerId)
+      .single(),
+    supabase
+      .from("daily_good_days")
+      .select("date")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   if (!playerRow) return { results: [], player: null };
 
   const yesterday = addDays(todayDateString, -1);
@@ -167,13 +179,6 @@ export async function backfillGoodDays(
   };
   const initialState = { ...player };
 
-  const { data: lastFinalized } = await supabase
-    .from("daily_good_days")
-    .select("date")
-    .eq("player_id", playerId)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
   const startDate = lastFinalized ? addDays(lastFinalized.date, 1) : earliestDateString;
 
   // Seed the rolling-window Good Day count once from currently-persisted

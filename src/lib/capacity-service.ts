@@ -3,40 +3,11 @@ import { computeDecayedCapacity, capacityForLevel, GRACE_DAYS } from "@/lib/capa
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { daysBetween } from "@/lib/today";
 
-// Recomputes and persists decay for one AreaCapacity row, on-read
-// (CLAUDE.md build order: "on-read is simpler for MVP").
-export async function refreshAreaCapacity(
-  playerId: string,
-  areaId: string,
-  level: number,
-  today: string,
-  playerCreatedDate: string,
-): Promise<void> {
-  const supabase = await createClient();
-
-  const { data: row } = await supabase
-    .from("area_capacities")
-    .select("*")
-    .eq("player_id", playerId)
-    .eq("area_id", areaId)
-    .single();
-  if (!row) return;
-
-  const lastActivity = row.last_activity_date ?? playerCreatedDate;
-  const daysSinceActivity = daysBetween(lastActivity, today);
-  const newCapacity = computeDecayedCapacity(level, daysSinceActivity);
-  const decaying = daysSinceActivity > GRACE_DAYS;
-
-  await supabase
-    .from("area_capacities")
-    .update({
-      capacity: newCapacity,
-      decay_cycle_start_date: decaying ? row.decay_cycle_start_date ?? lastActivity : null,
-    })
-    .eq("player_id", playerId)
-    .eq("area_id", areaId);
-}
-
+// Recomputes and persists decay for every AreaCapacity row, on-read
+// (CLAUDE.md build order: "on-read is simpler for MVP"). Reads all of the
+// player's rows in one query instead of first asking "which Areas exist"
+// and then re-fetching each row individually -- area_capacities already
+// has one row per Area, so the areas table was never actually needed here.
 export async function refreshAllAreaCapacities(
   playerId: string,
   level: number,
@@ -44,12 +15,27 @@ export async function refreshAllAreaCapacities(
   playerCreatedDate: string,
 ): Promise<void> {
   const supabase = await createClient();
-  const { data: areas } = await supabase.from("areas").select("id");
+  const { data: rows } = await supabase
+    .from("area_capacities")
+    .select("*")
+    .eq("player_id", playerId);
 
   await Promise.all(
-    (areas ?? []).map((area) =>
-      refreshAreaCapacity(playerId, area.id, level, today, playerCreatedDate),
-    ),
+    (rows ?? []).map((row) => {
+      const lastActivity = row.last_activity_date ?? playerCreatedDate;
+      const daysSinceActivity = daysBetween(lastActivity, today);
+      const newCapacity = computeDecayedCapacity(level, daysSinceActivity);
+      const decaying = daysSinceActivity > GRACE_DAYS;
+
+      return supabase
+        .from("area_capacities")
+        .update({
+          capacity: newCapacity,
+          decay_cycle_start_date: decaying ? row.decay_cycle_start_date ?? lastActivity : null,
+        })
+        .eq("player_id", playerId)
+        .eq("area_id", row.area_id);
+    }),
   );
 }
 

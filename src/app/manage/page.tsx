@@ -20,15 +20,17 @@ export default async function ManagePage() {
     );
   }
 
-  await activateScheduledTasks(player.id, getTodayDateString());
-
+  // activateScheduledTasks doesn't depend on (or get depended on by) any
+  // of the reads below -- run it alongside them instead of before them.
   const [
+    ,
     { data: areas },
     { data: goals },
     { data: tasks },
     { data: milestoneRows },
     { data: allMilestoneRows },
   ] = await Promise.all([
+    activateScheduledTasks(player.id, getTodayDateString()),
     supabase.from("areas").select("id, name").order("name"),
     supabase
       .from("goals")
