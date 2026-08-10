@@ -34,7 +34,7 @@ Do NOT implement the full 15-chapter system, Mastery Phase, or all 5 Main Areas'
 - Chapters 4–15, Mastery Phase, MP/Titles/Tiers, multiple simultaneous Goals, Side Quest bonus-XP routing, overflow XP curve (can hardcode "no overflow yet" — just cap XP at the daily ceiling for now)
 - **The Ship visual system (design doc Section 10) has a corrected implementation note — read Section 10.7.** A basic version (simple flat-vector SVG shapes per construction stage) is buildable directly in code now; it does NOT require external illustration first. That said, it's still not part of the current Phase 1 MVP build order below — use a simple placeholder (a toast/banner reading "Nivel up!" or "Chapter complete!") for now, and build the real Ship as a deliberate next phase, not because it's blocked on missing assets.
 
-### Terminology update (this session)
+### Terminology update (Level → Chapter, completed)
 
 What was previously called "Level" throughout the codebase and UI is now called **Chapter** (Capítulo) in all player-facing text. **Do not rename the underlying database column** (`current_level` stays as-is — renaming it is an unnecessary migration risk for a naming-only change). Just update UI labels/copy from "Level" to "Chapter", and any new code added going forward should use "chapter" in variable/function names for anything new, while leaving already-working existing code alone unless you're touching that specific area anyway.
 
@@ -167,7 +167,7 @@ if (days_since_activity_before_this_completion > GRACE_DAYS):
 
 **Day boundary:** a "day" for all date-diffing above (decay, Good Day rollover, rolling windows) is midnight-to-midnight in the player's local timezone. Simplest reasonable default for a single-user app.
 
-### 7. Good Day → Chapter-up gate (REVISED this session — Good-Day-only, no Tutorial)
+### 7. Good Day → Chapter-up gate (Good-Day-only, no Tutorial — implemented)
 
 **Tutorial is retired.** Players now start directly at Chapter 1 — its two original justifications (no XP-gating, fast first reward) are already true of Chapter 1 under this revised design, so it no longer did anything Chapter 1 doesn't. Do not reintroduce a Level/Chapter 0.
 
@@ -183,7 +183,7 @@ Chapter-up requires ALL of:
 
 (Cumulative thresholds recomputed without the old Tutorial's 7 GD prefix: Chapter 1's own requirement is 10, Chapter 2 adds 15 more → 25 cumulative, Chapter 3 adds 15 more → 40 cumulative.)
 
-### 8. Nested Nivel system (REVISED this session — now XP-driven, not Good-Day-driven)
+### 8. Nested Nivel system (XP-driven, not Good-Day-driven — implemented)
 
 Within each Chapter, a finer-grained "Nivel" fires on an exponential curve based on cumulative **XP** *within the current Chapter only* (resets to 0 when a new Chapter starts). This was changed from Good-Day-driven so Nivel tracks the Effort axis while the Chapter gate tracks the Balance axis — two independent, legible motivators (Section 2: "Effort without balance does not level the player. Balance without effort does not level the player").
 
@@ -209,7 +209,7 @@ Actual thresholds (computed, not hand-picked):
 
 **Goal/Path continuity:** unaffected by the Tutorial's removal — a player's active Goal/Path simply continues across Chapter transitions as before.
 
-### 9. Task Activation Delay (NEW this session)
+### 9. Task Activation Delay (implemented)
 
 A newly created Task earns full Growth XP starting the day **after** it's created, not the same day. No fixed clock window (e.g. NOT "only plan 8-10pm") — that would punish a single missed window the same way a fragile streak does. Just: `created_date + 1 day` = when full Growth XP eligibility begins.
 
@@ -225,7 +225,7 @@ else:
 
 **New seeded system Habit — "Planned tomorrow":** always available to every player, no `milestone_id` required, standard Habit-tier XP (2.5×) when completed. Not player-created — seed it alongside the 5 Areas and Just Stabilize Path in the database seed step.
 
-### 10. Habit Streak (NEW this session — implemented)
+### 10. Habit Streak (implemented)
 
 Per-Habit consecutive-day tracking, shown as a circular ring on Today, independent of Good Days/Chapter/Tasks. Only `tier = 'habit'` tasks have one. Its milestone XP feeds the same `cumulative_xp` pool that drives Nivel — deliberately a single XP economy, not a parallel currency (design discussion: rejected a separate/capped channel in favor of calibrating the payout against the existing per-area ceiling instead).
 
@@ -271,7 +271,7 @@ xp_for_milestone = round(multiplier * per_area_ceiling(level, area), 2)
 
 1. **Capacity is hidden.** Never show the raw Capacity number or decay % directly in the UI. It's a backend variable that determines ceilings and Good Day math — the player feels its effects, doesn't see the stat.
 2. **Show XP live — but NOT Good Day %.** These are governed by different rules, don't conflate them:
-   - **Immediate per-action feedback (NEW this session):** every completed Task shows an instant "+X XP" moment (using the tier values from formula #1). A running **"XP today" counter is also shown live**, updating as the day progresses.
+   - **Immediate per-action feedback (implemented):** every completed Task shows an instant "+X XP" moment (using the tier values from formula #1). A running **"XP today" counter is also shown live**, updating as the day progresses. Task completion itself is optimistic (see "Optimistic UI" below) — the checkbox/ring flips before the server confirms, but the XP number always waits for the real server value.
    - **Good Day % stays hidden, revealed only at day-rollover.** Never show the live percentage or a progress bar ticking toward the 80% threshold. Reasoning: Good Day % has a specific pass/fail cliff (80%) that invites gaming if visible live ("just need a bit more to hit 80%"). XP has no such cliff — it simply accumulates with nothing to optimize *toward* — so showing XP live doesn't reintroduce that problem. Don't generalize "hide it live" from Good Day % to XP; they're different cases for a specific, stated reason.
 3. **Every player must have ≥1 active Goal.** For Chapter 1, offer the "Just Stabilize" Path as a one-tap option — never force blank-page goal authoring on a new player (this is a deliberate accessibility decision, see design doc Section 8.3).
 4. **The "Just Stabilize" Path (MVP's default/starter Path) — seed this as real data:**
@@ -282,7 +282,7 @@ xp_for_milestone = round(multiplier * per_area_ceiling(level, area), 2)
 
 ---
 
-## Build order for this session
+## Build order (original Phase 1 build, completed)
 
 1. Scaffold Next.js + Tailwind + Supabase connection
 2. Create the schema above as Supabase tables/migrations
@@ -293,7 +293,7 @@ xp_for_milestone = round(multiplier * per_area_ceiling(level, area), 2)
 7. Implement decay (can be a scheduled/cron check or computed on-read — on-read is simpler for MVP)
 8. Simple "Today" view + a basic Chapter/XP progress display (visible) — no Capacity display (hidden per UX principle #1)
 
-## This session's specific task (if Phase 1 above is already built)
+## Terminology-update session's task (completed)
 
 1. Update all player-facing UI text: "Level" → "Chapter" (no database column rename)
 2. Check whether micro-milestone logic (old Section 8) was already implemented — if yes, remove it; if no, skip straight to step 3
@@ -310,5 +310,42 @@ Three new systems were designed in a later session:
 **Do not implement any of these three yet.** All have concrete formulas/specs locked, but building them now would mean building on top of pricing/catalog decisions (#1) or a Ship implementation (#2, #3 — the Onboarding Flow's Step 4 specifically needs at least a basic Ship to exist) that hasn't been started. Flag this to Gus if asked to build these — check whether the Ship's basic version (see note below) and the balance-focused pricing session have happened before proceeding.
 
 **Ship implementation status — corrected, do not follow outdated guidance:** an earlier instruction in this file said to defer all Ship rendering until external illustration assets exist. **That guidance was wrong and has been corrected** (design doc Section 10.7) — the flat vector art style was deliberately chosen because Claude Code can build it directly in code (SVG/CSS) right now, without needing external illustration. If/when Ship or Avatar visuals become the active task, build simple geometric SVG shapes directly — don't wait for external art, and don't defer this the way earlier guidance mistakenly suggested.
+
+---
+
+## Implemented since Phase 1 (running log, newest first — keep this current)
+
+### Today ↔ Manage page transition + Goal wizard full-screen takeover
+- `src/app/template.tsx` — Next.js `template.tsx` remounts on every navigation (unlike `layout.tsx`), used to apply a ~300ms fade + slight rise transition between Today and Manage instead of an instant page swap. This is the app's standard "how things appear" pattern now — reuse it (mount → `requestAnimationFrame` flips an `entered` state a frame later → CSS transition reacts to it) rather than inventing a new transition style.
+- The Goal wizard (below) uses the same pattern for its own enter transition, and is a `fixed inset-0` full-screen overlay with `document.body.style.overflow = "hidden"` while open (restored on close) — this is the established pattern for any future full-screen takeover in this app, not a one-off.
+
+### Performance: cut sequential Supabase round trips on page loads
+Today→Manage navigation was measured at ~1.1s in production. Found and fixed 3 concrete sources of unnecessarily *sequential* (not parallel) Supabase queries:
+- `src/lib/good-day-service.ts` — `backfillGoodDays` now fetches `playerRow` and `lastFinalized` together (`Promise.all`; they don't depend on each other). `windowGoodDayCount` still has to wait for that result, since it genuinely needs `player.current_level`.
+- `src/lib/capacity-service.ts` — `refreshAllAreaCapacities` now reads all of a player's `area_capacities` rows in **one** query instead of first fetching the `areas` table for ids and then re-fetching each area's capacity row individually. The old per-area `refreshAreaCapacity` helper was removed (it had no other callers).
+- `src/app/manage/page.tsx` — `activateScheduledTasks` now runs inside the same `Promise.all` as the page's other 5 queries instead of sequentially before them.
+- **Finding, worth remembering so it isn't re-investigated from scratch:** after these fixes, live production navigation timing was still noisy across repeated measurements (roughly 600ms–3000ms). This looks like Vercel Hobby-tier serverless cold starts, not remaining query count — a real fix here would mean a hosting-tier/warm-instance conversation, not more query parallelization. Don't assume more of this same optimization will move the needle further without new evidence.
+
+### Goal creation wizard + Goal deletion
+Creating a Goal is no longer a flat one-shot form — `GoalForm.tsx` was deleted in favor of a guided 3-step flow:
+- `src/components/manage/GoalWizard.tsx` — Step 1 (title + primary/secondary Area), Step 2 (add Milestones), Step 3 (walks through each Milestone **one at a time** — "Milestone 1 of 2", etc. — prompting for ~2-3 Tasks per Milestone via a Habit/Main Task tier toggle; every Task added auto-links to whichever Milestone is currently showing, there's no milestone-picker dropdown). Each step persists immediately through the existing `createGoal` / `createMilestone` / `createTask` server actions (`src/app/manage/actions.ts`, extended to return the inserted row's `id` so the wizard can chain steps) — there's no "submit everything at the end" moment, so closing partway through is safe; whatever was added already shows up normally in the Goals list.
+- Renders as the full-screen takeover described above, not an inline panel.
+- **Goal deletion:** an "Edit" toggle next to the Goals heading (`src/components/manage/GoalsSection.tsx` — new, extracted from `manage/page.tsx` to hold this shared toggle state across all Goal cards) swaps each Goal card's Complete/Abandon actions for a Delete button, same confirm/cancel pattern already used for Task rows. `deleteGoal` (in `manage/actions.ts`) cascades explicitly — Tasks, then Milestones, then the Goal itself, in that order — rather than relying on unverified DB cascade rules, since a Main Task can never validly exist with a null `milestone_id`.
+
+### Area icons reused as small UI icons in Manage (gamification pass, step 1)
+`src/components/AreaIcon.tsx` — flat SVG icons per Area, reusing the Area → Ship-part mapping already locked in the design doc (Section 10.2: Physical=hull, Mental=helm, Career=sails, Relationships=crew quarters, Exploration=crow's nest/spyglass). Used as small icon chips on Goal cards and Task rows in Manage, plus a milestone-progress bar on Goal cards and a checklist-style marker on Milestone rows. **This is presentation only — not the Ship system itself**, which is still not built (placeholder toast on Nivel-up still stands, see MVP scope above). It does confirm the flat-vector-icon approach works well in practice; reuse this icon set rather than building a second one whenever the real Ship gets built.
+
+**Recurring mobile layout bug, fixed in 3 places — watch for this pattern in any new UI row:** `flex items-center justify-between` rows with no `flex-wrap`, holding both a title/long text and a cluster of right-aligned action buttons/text, break on narrow (~375px) viewports — either the actions overflow off-screen, or the title gets crushed into single-word-per-line wrapping. Fixed in `TaskRow.tsx`, the Goal-card header in `GoalsSection.tsx`, and `MilestoneRow.tsx`, all with the same recipe: `flex flex-wrap ... gap-x-* gap-y-*` on the row, plus `min-w-[Npx] flex-1` on the primary (left) content block so it wins the first line instead of shrinking indefinitely. Apply this proactively to any new row mixing long text with multiple action buttons — don't wait for it to be reported again.
+
+### Optimistic UI for Task completion
+`src/lib/use-task-completion.ts` uses React 19's `useOptimistic` so a Task's checkbox/ring flips the instant it's clicked, instead of waiting for the server round trip + page revalidation. XP amounts, streak milestones, and Nivel-ups stay server-authoritative and only appear once the server responds — deliberately never predicted client-side, since that would mean forking the ceiling/bonus/milestone math into two places that could drift. **Also fixed a real double-submission race found while testing:** `isPending` from `useTransition` doesn't disable the input until after a render commits, so two clicks landing back-to-back could both fire and double-award XP before either saw the disabled state. A synchronous `useRef` guard (set before any `await`, checked at the top of the handler) closes that window; `isPending`/`disabled` alone was not sufficient.
+
+### Habit Stats monthly denominator (bug fix; formula wasn't previously written down here)
+`src/lib/habit-stats.ts`'s "X/Y this month" (shown on Today's Habit Streak cards and the Habit Stats page) uses `Y` = the **fixed size of the current month's window** — days in the month (30/31/28/29), or from activation to month-end if the Habit started mid-month — **not** days elapsed so far. It originally counted elapsed days, which read backwards (e.g. "0/3" on day 3 looked like a near-perfect score instead of a mostly-empty month); fixed so it counts up toward the whole month. The `rate` percentage shown alongside it uses the same fixed denominator, so the fraction and the % never contradict each other.
+
+### Visual theme: "Vivid Light" / mint (not previously documented here)
+The app's visual theme is light-only — mint `--background`, distinct `--surface`/`--surface-hover` tokens for cards so they read as genuinely different surfaces rather than a blurred/gray version of the page background. The `prefers-color-scheme: dark` block in `globals.css` is deliberately kept in sync with the light `:root` values — **this is not a real dark theme**, that was an explicit decision (not an oversight born from never building one). Don't "fix" it into an actual dark mode without asking first.
+
+---
 
 Ask before adding anything not listed above. When in doubt about a formula or a rule not covered here, check `docs/game_design.md` before guessing.
