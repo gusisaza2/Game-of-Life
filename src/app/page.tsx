@@ -194,7 +194,7 @@ export default async function TodayPage() {
 
       <div className="w-full max-w-md flex flex-col gap-6">
         <TaskSection
-          title="Main Tasks"
+          title="Misiones"
           tasks={mainTasks}
           completedIds={completedIds}
           playerId={player.id}

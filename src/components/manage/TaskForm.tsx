@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createTask } from "@/app/manage/actions";
+import { TIER_LABELS } from "@/lib/task-tiers";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -29,7 +30,7 @@ export function TaskForm({
 
       <input
         name="title"
-        placeholder="Task title"
+        placeholder={`${TIER_LABELS[tier]} title`}
         required
         className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
       />
@@ -41,9 +42,9 @@ export function TaskForm({
           onChange={(e) => setTier(e.target.value)}
           className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
         >
-          <option value="habit">Habit</option>
-          <option value="main_task">Main Task</option>
-          <option value="chore">Chore</option>
+          <option value="habit">{TIER_LABELS.habit}</option>
+          <option value="main_task">{TIER_LABELS.main_task}</option>
+          <option value="chore">{TIER_LABELS.chore}</option>
         </select>
 
         <select
@@ -92,7 +93,7 @@ export function TaskForm({
       )}
 
       <button type="submit" className="btn-primary self-start rounded px-3 py-1 text-sm">
-        Add Task
+        Add {TIER_LABELS[tier]}
       </button>
     </form>
   );

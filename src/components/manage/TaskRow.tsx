@@ -161,9 +161,9 @@ export function TaskRow({
             onChange={(e) => setTier(e.target.value)}
             className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
           >
-            <option value="habit">Habit</option>
-            <option value="main_task">Main Task</option>
-            <option value="chore">Chore</option>
+            <option value="habit">{TIER_LABELS.habit}</option>
+            <option value="main_task">{TIER_LABELS.main_task}</option>
+            <option value="chore">{TIER_LABELS.chore}</option>
           </select>
 
           <select

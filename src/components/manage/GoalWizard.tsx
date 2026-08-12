@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createGoal, createMilestone, createTask } from "@/app/manage/actions";
 import { areaColor } from "@/lib/area-colors";
 import { AreaIcon } from "@/components/AreaIcon";
+import { TIER_LABELS } from "@/lib/task-tiers";
 
 type Area = { id: string; name: string };
 type Step = "goal" | "milestones" | "tasks";
@@ -420,7 +421,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
                       handleAddTask();
                     }
                   }}
-                  placeholder={`A task for "${currentMilestone.title}"…`}
+                  placeholder={`A ${TIER_LABELS[taskTier].toLowerCase()} for "${currentMilestone.title}"…`}
                   className="rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
                 />
 
@@ -439,7 +440,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
                           : undefined
                       }
                     >
-                      {t === "habit" ? "Habit" : "Main Task"}
+                      {TIER_LABELS[t]}
                     </button>
                   ))}
                 </div>

@@ -4,6 +4,11 @@
 // here -- before the Ship itself is built -- gives Goals/Milestones a
 // visual identity that already means something in the game's world,
 // instead of a generic icon set invented just for this screen.
+//
+// Career is the one deliberate deviation from that mapping (Gus's own
+// Career is music/songwriting -- see the "Songwriting Camps" Goal) --
+// swapped to a pair of sixteenth notes instead of sails. This is a
+// personal customization, not a change to the locked design doc mapping.
 
 function Hull() {
   return (
@@ -27,12 +32,14 @@ function Helm() {
   );
 }
 
-function Sails() {
+function MusicNotes() {
   return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <path d="M10 2.5v15" strokeLinecap="round" />
-      <path d="M10.4 3.6 16 8.4l-5.6 1z" fill="currentColor" stroke="none" />
-      <path d="M9.6 9.4 5 13.4l4.6.9z" fill="currentColor" stroke="none" />
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <path d="M8 15.1V4.6M15.4 16.4V6.4" />
+      <path d="M8 4.6l7.4 1.8" strokeWidth="1.7" />
+      <path d="M8 7.4l7.4 1.8" strokeWidth="1.7" />
+      <ellipse cx="6" cy="15.4" rx="2.1" ry="1.6" fill="currentColor" stroke="none" transform="rotate(-18 6 15.4)" />
+      <ellipse cx="13.4" cy="16.7" rx="2.1" ry="1.6" fill="currentColor" stroke="none" transform="rotate(-18 13.4 16.7)" />
     </svg>
   );
 }
@@ -64,7 +71,7 @@ function Spyglass() {
 const AREA_ICONS: Record<string, () => React.ReactElement> = {
   "Physical Health": Hull,
   "Mental Health": Helm,
-  Career: Sails,
+  Career: MusicNotes,
   Relationships: CrewQuarters,
   Exploration: Spyglass,
 };
