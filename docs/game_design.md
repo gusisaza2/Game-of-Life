@@ -601,7 +601,11 @@ MP can be spent on Ship customization (see Section 10) — giving the Exploratio
 
 ---
 
-## 10. Visual Identity — The Ship (Locked concept; basic implementation confirmed buildable now, Section 10.7)
+## 10. Visual Identity — The Ship (Partially superseded — see Section 18)
+
+> **2026-08-10 update:** the core idea in this section — representing Growth Phase progress as *literally building a ship, scene by scene* (10.1, 10.5–10.7) — is superseded by **Section 18, The Voyage Map**. In-session testing of the actual flat-vector dock/ship illustration (built directly in code, per 10.7) came out looking like a generic amateur scene rather than an intentional design — too much small illustrative detail (wood grain, water reflections, perspective) for what hand-coded SVG does well. A winding path/map of unlocking destinations reuses a well-established, achievable UI pattern instead (see 18.1) and ties naturally into the already-confirmed Explorer/Cartographer archetype (12.3).
+>
+> **Not superseded — still fully locked and in active use:** the **Area → Ship Part mapping (10.2)**. It's already shipped as small icon glyphs on Goal/Task cards in the real app (`src/components/AreaIcon.tsx`) and remains each Area's visual identity going forward — it just no longer anchors a literal environmental ship scene. The rest of this section (10.3, 10.4) is kept below as historical record, not deleted, consistent with how Section 5 was handled earlier.
 
 The central visual metaphor for the entire game: the player's journey is represented as **building, then sailing, a ship.** This section defines the concept; actual illustration/asset creation is separate downstream work (see note at end of section).
 
@@ -898,4 +902,99 @@ Running record of locked decisions, so we don't relitigate settled ground.
 - **Onboarding Flow (Section 13, new):** designed only after Avatar, Path selection, and the retired Tutorial already existed separately — the same lesson as the Growth Phase stress test, that well-designed individual pieces can still leave sequencing gaps. Four-step flow locked: (1) short narrative hook, not a progress gate, (2) single-screen Avatar creation, (3) Path/Goal selection with "Just Stabilize" as the primary one-tap option, (4) brief narrative transition into the Today screen. The archetype-selection screen is deliberately absent from this flow for now, since only one default archetype exists (Section 12.3) — a single-option selector would be pure friction. Every step kept to one screen, checked explicitly against the Section 7.2 accessibility constraint that Chapter 1 must stay approachable for someone rebuilding or dealing with depression — onboarding friction was treated as seriously as in-game mechanical friction.
 - **AI Goal Decomposition Assistant (Section 8.6, new) — confirmed future direction, not yet built:** a voluntary AI assistant to help a player break a custom Goal (Section 8.4) into Milestones and Tasks when they know what they want but not how to structure it. Explicitly distinguished from the earlier rejected "AI auditor" idea — this suggests, never judges or rejects content, matching the same "accept as-is, edit freely, or ignore" treatment already given to Path templates. Understood as a more general version of what Path templates already do, extended to any custom goal rather than only pre-written archetypes. Two practical considerations noted for whenever this is revisited: it introduces real ongoing AI-usage cost (unlike the rest of this design, which is one-time-built deterministic math), and it's a genuine scope jump while the core Growth Phase loop is still being validated — deferred with the same treatment as the pixel-art tooling pipeline (Section 10.7), not scheduled yet.
 - **Second pre-build audit (before returning to Claude Code after the Chest/Avatar/Onboarding session):** verified no duplicate section numbers (clean this time), no broken cross-references (systematically checked every "Section X.Y" reference against actual headers — all valid), and confirmed the Nivel Chest System's (Section 11) example MP values are numerically consistent with the current XP-driven Nivel thresholds (Section 7.5) — both use the same Chapter 1/2/3 cumulative XP figures (450/700/700, thresholds 47-450 / 57-700 / 57-700). One stale header fixed: Section 10's title still read "implementation details TBD" despite Section 10.7 confirming a basic version is buildable now — corrected. Section 15 (Open Items) and the historical Decisions Log entries still use pre-rename terminology (Level/Tutorial instead of Chapter) — left as-is since they're clearly historical record of already-resolved work, not active spec, consistent with how Section 5 was already handled (marked Superseded rather than rewritten).
+- **The Ship's literal construction-scene concept superseded by The Voyage Map (Sections 10, 18, new — 2026-08-10):** live-testing the actual flat-vector dock/keel illustration in Claude Code (per 10.7) showed it reads as a generic, amateur-looking scene, not an intentional design — too much small illustrative detail (wood grain, water reflections, dock posts) for what hand-coded SVG genuinely does well. Rather than pay for a second paid design tool (rejected — Gus is already paying for Claude, didn't want to add another subscription), the fix was a different *execution style* first (an icon/emblem treatment, tested and reasonably well-received), then a different *concept* entirely once Gus proposed it mid-session: represent Growth Phase progress as **navigating a voyage between destinations** instead of watching a ship get built. Confirmed: **one destination per Capítulo** (15 total), shown as a winding path (à la Duolingo/Candy Crush level-select maps) rather than a full world map at once — a well-established, achievable pattern that sidesteps the "15 destinations on screen at once" clutter problem entirely. The Area → Ship Part mapping (10.2) is *not* abandoned — it's already shipped as `AreaIcon.tsx`'s small icon glyphs and keeps that role. Full detail in Section 18.
+- **Goal Milestones get the same path treatment, at a smaller scale (Section 18.2, new):** a Goal's 2-5 Milestones are already a sequential checkpoint structure (Section 8.1) — reusing the exact same visited/current/locked node pattern, just smaller and labeled with the Milestone's own title, replaces the flat progress bar already shown on Goal cards in `/manage`. One visual language, two scales (account-level Capítulo journey = macro, per-Goal Milestones = micro) — not a third invented pattern.
+- **Habits vs. Misiones (renamed from "Main Task" in player-facing copy) given two separate, explicit purposes (Section 19, new):** Habits feed the Avatar's per-Area growth rings (Section 20); Misiones move the player's position along the current Goal's mini-path (Section 18.2). This doesn't change any existing formula — Habit (2.5×) and Main Task (4.0×, already required to link to an active Milestone, Section 8.2) were already structurally distinct, this just gives that distinction a visible payoff. Considered and rejected: renaming Chores to "Side Quest" — that name is already reserved for a different, not-yet-built tier (Bonus XP only, excluded from Good Day %, Section 6.1) and would have semantically collided, since what Gus described wanting for renamed-Chores ("gives bonuses, doesn't lead to a goal") is actually a closer match to the *existing* Side Quest definition than to how Chores actually work today (Chores count toward Good Day % at 20% weight, per formula #2). Chores kept exactly as they are, mechanically and in name, once this was pointed out.
+- **Avatar Growth Rings (Section 20, new) — mechanic locked, exact formula/placement still open:** five rings around the Avatar, one per Area, fed by Habit completions. First proposal (ring driven by the existing hidden `AreaCapacity.capacity` value) was **rejected by Gus in favor of something simpler and more achievable**: each ring = that Area's XP earned *today* ÷ that Area's `per_area_ceiling(level, area)` (Section 4.4/6.3 formula, already locked, no new math) — resets empty every new day, same "fresh daily target" feel as Apple Watch Activity rings (the reference point that inspired the ring idea in the first place). This sidesteps the Capacity-must-stay-hidden rule entirely, since per-area daily XP is already something the design explicitly allows showing live (Section 2.1/UX principle #2) — unlike Capacity, it was never meant to be hidden. Because it's a fresh daily meter rather than a persistent decaying state, it needs **no neglect/fade treatment** — an empty ring at 8am isn't a judgment, it's just "haven't started today yet." **Explicitly decided: filling a ring awards no new XP, MP, or currency** — consistent with the single-XP-economy principle already established for Habit Streaks and the anti-random-reward principle from the Nivel Chest System (Section 11.1). The only payoff is a full-screen (not small-toast) celebration reusing the Area's own icon/color at large scale, copy pattern **"¡[Área] al 100% hoy!"** + "Llegaste al máximo posible de hoy" — visually validated in-session and approved. **Still open, not resolved:** exact relationship to the existing per-Habit Streak ring (`HabitStreakCard.tsx`) so the app doesn't end up with two competing "ring" metaphors on Today; and where in the UI these rings actually live (leaning toward the Avatar's already-locked "persistent secondary corner badge" placement, Section 12.1, but not confirmed). Saved as an explicit open-questions memory so this isn't re-litigated from scratch next session.
+- **Onboarding Flow (Section 13) not yet reconciled with the Voyage Map pivot:** Steps 1 and 4 (13.3, 13.6) currently specify visuals built on the now-superseded literal Ship construction scene ("empty dock, keel just laid"; "Ship + Avatar together at the dock"). Not rewritten in this session — flagged here so a future session doesn't build those two steps as originally written without first reconciling them against Section 18.
+
+---
+
+## 18. Visual Identity — The Voyage Map (Locked concept; supersedes 10.1/10.5–10.7 for Growth Phase progression)
+
+Represents "how far along is my journey" as **navigating a route between destinations**, instead of watching a ship get built piece by piece. Grew directly out of testing the literal Ship-construction scene in code and finding it read as generic/amateur rather than intentional (see Decisions Log, 2026-08-10) — this section is the replacement, designed to play to what flat-vector, hand-coded SVG actually does well: bold geometric shapes and established UI patterns, not environmental illustration.
+
+### 18.1 Why a Map, Not a Scene (Locked)
+
+A literal environmental scene (sky, water, a dock with wood-grain detail, reflections) requires illustration skill — composing believable depth, material, and lighting — which hand-coded SVG is genuinely weak at. A map/path is inherently graphic: dots, lines, circles. This isn't a downgrade in ambition, it's matching the visual concept to the actual medium, the same reasoning that already justified flat-vector over painterly/vintage-nautical styles for the Ship (10.5). It also connects better to the already-confirmed Explorer/Cartographer archetype (12.3) than ship-building did — mapping a journey is literally what a cartographer does.
+
+### 18.2 Two Scales, One Visual Language (Locked)
+
+The same node-and-route pattern is used at two different scopes, not two different designs:
+
+| Scale | What it represents | Node count | Node labels |
+|---|---|---|---|
+| **Macro** | Account-level journey across Capítulos 1–15 | 15 destinations, one per Capítulo | Not required (destinations don't need individual names yet) |
+| **Micro** | A single Goal's Milestones (Section 8.1) | 2–5 destinations, matching that Goal's Milestone count | The Milestone's own title (player-authored, meaningful) |
+
+The micro version replaces the flat progress bar already shown on Goal cards in `/manage` — same underlying data (Milestones, `status: active/completed`), different presentation.
+
+### 18.3 Node & Route Visual Language (Locked)
+
+- **Route:** a dashed/dotted line connecting nodes in sequence — winding (macro) or straight (micro, where space is tighter, e.g. inline in a card).
+- **Visited node:** solid filled circle, checkmark.
+- **Current node:** larger circle with an emphasis ring/glow, visually distinct from visited.
+- **Locked/future node:** outline-only circle, no fill — clearly "not yet," not hidden entirely (the player can see the shape of what's ahead, matching the existing design principle of showing structure without shame).
+- At macro scale, only nearby destinations need to be visible at once (matching Duolingo/Candy Crush-style level maps) — avoids ever rendering all 15 destinations at once, which would be cluttered and doesn't match how far ahead a player can meaningfully see anyway.
+
+### 18.4 Relationship to the Ship / Area Mapping (Locked)
+
+The Area → Ship Part mapping (Section 10.2: Physical=hull, Mental=helm, Career=sails, Relationships=crew quarters, Exploration=crow's nest/spyglass) is **not retired**. It's already shipped as small icon glyphs (`src/components/AreaIcon.tsx`) used on Goal and Task cards, and continues to be each Area's visual identity. What's retired is specifically using those parts to build one literal environmental ship scene as the primary progress visual — the mapping itself, and the "ship" as a conceptual vessel/identity tied to the Explorer archetype, can still exist as flavor without needing a full illustrated scene.
+
+### 18.5 Open Questions (Not Resolved)
+
+- **Is there a "you are here" marker on the map** (a ship icon, the Avatar itself, something else), or is the current-node highlight (18.3) sufficient on its own?
+- **Do destinations get individual names/flavor** at the macro scale eventually, or do they stay anonymous waypoints indefinitely?
+- **Onboarding Steps 1 and 4 (Section 13.3, 13.6)** currently describe visuals built on the now-superseded ship-construction scene and need to be rewritten against this section — not yet done (see Decisions Log).
+
+---
+
+## 19. Habits vs. Misiones — Two Separate Feedback Loops (Locked concept)
+
+Two of the three Task tiers were already mechanically distinct (Section 6.1, 8.2) but read identically to the player. This section gives that existing distinction a visible narrative purpose, without changing any formula.
+
+| Tier | Player-facing name | Feeds | Purpose |
+|---|---|---|---|
+| `habit` | Habit | The Avatar's per-Area growth rings (Section 20) | "Who you're becoming" — personal, ongoing, not goal-bound |
+| `main_task` | **Misión** (renamed from "Main Task" in UI copy only — the data-layer value `main_task` is unchanged, same pattern as the Level→Capítulo rename) | Moves the player's position along the current Goal's mini-path (Section 18.2) | "What you're achieving" — tied to a specific Goal, requires Milestone linkage (already locked, Section 8.2) |
+| `chore` | Chore (unchanged) | Neither loop directly — still counts toward Good Day % (Section 6.2, 20% weight) and XP as before | Baseline life maintenance, deliberately outside both narrative loops |
+
+**Chores explicitly do not become "Side Quest":** that name is already reserved for a distinct, not-yet-built tier (Bonus XP only, excluded from Good Day % entirely — Section 6.1). Renaming Chores to it would have collided with that reservation. Considered and rejected in-session once the conflict was pointed out; Chores stay exactly as they already were, mechanically and in name.
+
+---
+
+## 20. Avatar Growth Rings (Locked concept; formula locked, UI placement and relationship to Habit Streak not yet resolved)
+
+Five rings arranged around the Avatar (Section 12), one per Main Area, giving Capacity's already-intended "show effects, not the number" goal (Section 2.2) — and, more directly, the existing "show XP live" principle (Section 2.1) — a concrete visual form. Fed by Habit completions (Section 19).
+
+### 20.1 Why Rings, Not a Third Path (Locked)
+
+The Voyage Map (Section 18) represents *sequential* progress — you complete destination 1, then 2, then 3. The five Areas don't work that way; they grow **in parallel**, simultaneously, every day. Forcing the same path pattern a third time would misrepresent that shape. A ring-per-Area arrangement (à la Apple Watch Activity rings — the explicit reference point that inspired this) is the established pattern for "several simultaneous parallel meters," which is what this actually is.
+
+### 20.2 What Fills a Ring (Locked, including formula)
+
+```
+ring_fill(area) = todaysXP(area) / per_area_ceiling(level, area)
+```
+
+`per_area_ceiling` is the already-locked formula from Section 6.3/4.4 (Global Daily Cap × that Area's current weight) — no new formula invented. **Resets to empty at the start of every new day.**
+
+**Explicitly rejected alternative:** driving the ring from the hidden `AreaCapacity.capacity` value (0–100, persistent, decaying). Rejected by Gus in favor of the above because (a) it's a fresh, achievable target every single day rather than a slow-moving abstract number, and (b) per-area daily XP is something this design already intends to show live (Section 2.1), while Capacity is explicitly meant to stay hidden (Section 2.2) — the daily-XP version sidesteps that tension entirely instead of tiptoeing around it.
+
+### 20.3 No Neglect/Decay Treatment Needed (Locked)
+
+Because the ring is a fresh daily meter and not a persistent decaying state, an empty ring first thing in the morning carries no judgment — it just means "haven't logged anything in this Area yet today." This is a meaningfully different (and simpler) treatment than Capacity's own decay/grace-window mechanics (Section 4.3), which still apply in the background but are not what this ring shows.
+
+### 20.4 Filling a Ring — No New Reward (Locked)
+
+Reaching 100% for an Area, for the day, awards **no XP, no MP, no new currency of any kind.** This is a deliberate application of two already-locked principles: Habit Streaks already established a single-XP-economy rule (no parallel currency, Section 10 old-numbering / Habit Streak spec), and the Nivel Chest System (Section 11.1) already rejected variable/bonus rewards as compulsion-forming. Adding a payout here would reopen both fights for no real benefit — the actual reward for a full ring is already the underlying real thing: today's full per-area XP ceiling was used.
+
+**The only payoff is visual:** a full-screen (not a small toast) celebration, using that Area's own icon and accent color at large scale (reusing `AreaIcon.tsx`, not a new icon set), with copy: **"¡[Área] al 100% hoy!"** and a subtitle, **"Llegaste al máximo posible de hoy."** Mocked up and approved in-session.
+
+### 20.5 Open Questions (Not Resolved)
+
+- **Relationship to the existing per-Habit Streak ring** (`HabitStreakCard.tsx`, current_streak/longest_streak per individual Habit, already shipped): both are "rings" but represent different things at different granularities (one Habit vs. one Area). Not yet decided whether/how to visually distinguish them so they don't read as a confusing duplicate metaphor on the same screen.
+- **Where these rings actually live in the UI.** Section 12.1 already establishes the Avatar as a "persistent but secondary" element (a corner badge, not the main focus) — the rings likely live there too (expand on tap), but this hasn't been confirmed against an actual screen layout yet.
+
+*(Both of these are also saved as a standing memory note outside this document, so they aren't lost even if this file isn't the next thing read.)*
 
