@@ -5,6 +5,7 @@ import { setGoalStatus, deleteGoal } from "@/app/manage/actions";
 import { GoalWizard } from "@/components/manage/GoalWizard";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
 import { MilestoneRow } from "@/components/manage/MilestoneRow";
+import { GoalMilestonePath } from "@/components/manage/GoalMilestonePath";
 import { AreaIcon } from "@/components/AreaIcon";
 import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
@@ -43,9 +44,7 @@ function GoalCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
   const color = areaColor(areaName);
-  const totalMilestones = goal.milestones.length;
-  const completedMilestones = goal.milestones.filter((m) => m.status === "completed").length;
-  const milestonePct = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+  const sortedMilestones = [...goal.milestones].sort((a, b) => a.order_index - b.order_index);
 
   function handleDelete() {
     startTransition(async () => {
@@ -124,34 +123,24 @@ function GoalCard({
         </div>
       </div>
 
-      {totalMilestones > 0 && (
-        <div className="flex items-center gap-2 pl-11">
-          <div className="h-1.5 flex-1 rounded-full bg-foreground/10">
-            <div
-              className="h-full rounded-full transition-[width] duration-500 ease-out"
-              style={{ width: `${milestonePct}%`, backgroundColor: color.accent }}
-            />
-          </div>
-          <span className="shrink-0 text-[11px] tabular-nums text-foreground/45">
-            {completedMilestones}/{totalMilestones}
-          </span>
+      {sortedMilestones.length > 0 && (
+        <div className="pl-11">
+          <GoalMilestonePath milestones={sortedMilestones} color={color} />
         </div>
       )}
 
       <ul className="flex flex-col gap-3 pl-11">
-        {[...goal.milestones]
-          .sort((a, b) => a.order_index - b.order_index)
-          .map((milestone) => (
-            <MilestoneRow
-              key={milestone.id}
-              milestone={milestone}
-              taskRows={taskRowsByMilestoneId.get(milestone.id) ?? []}
-              areas={areas}
-              canAddTask={goal.status === "active" && milestone.status === "active"}
-              playerId={playerId}
-              defaultAreaId={goal.area_id}
-            />
-          ))}
+        {sortedMilestones.map((milestone) => (
+          <MilestoneRow
+            key={milestone.id}
+            milestone={milestone}
+            taskRows={taskRowsByMilestoneId.get(milestone.id) ?? []}
+            areas={areas}
+            canAddTask={goal.status === "active" && milestone.status === "active"}
+            playerId={playerId}
+            defaultAreaId={goal.area_id}
+          />
+        ))}
       </ul>
 
       {goal.status === "active" && (
