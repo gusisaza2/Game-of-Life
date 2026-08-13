@@ -1,8 +1,24 @@
+// CLAUDE.md's day boundary is midnight-to-midnight in the PLAYER's local
+// timezone -- but this runs on Vercel's serverless functions, which use
+// UTC as their system timezone, not Gus's (America/Bogota, UTC-5, no
+// DST). Using Date's own getFullYear/getMonth/getDate would silently
+// compute the *server's* calendar day instead, which drifts from Gus's
+// actual day for a multi-hour window every evening (found via a real bug
+// report: a habit marked at night showed as already-completed the next
+// afternoon, because the server had already rolled its UTC date over
+// while it was still "yesterday" in Bogota). Intl.DateTimeFormat with an
+// explicit timeZone sidesteps the process's own TZ entirely.
+const PLAYER_TIMEZONE = "America/Bogota";
+
+const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PLAYER_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function getDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return dateFormatter.format(date);
 }
 
 export function getTodayDateString(): string {
