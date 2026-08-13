@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { createGoal, createMilestone, createTask } from "@/app/manage/actions";
 import { areaColor } from "@/lib/area-colors";
 import { AreaIcon } from "@/components/AreaIcon";
@@ -202,14 +203,20 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
     );
   }
 
-  return (
+  // Portaled straight to document.body: template.tsx's page-transition
+  // wrapper applies a CSS transform, which per spec makes it the containing
+  // block for any position:fixed descendant, so left un-portaled this
+  // overlay would size/position itself against the whole scrollable page
+  // instead of the actual viewport (same bug found and fixed in
+  // GoalPathView.tsx).
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 overflow-y-auto bg-background transition-opacity duration-300 ease-out ${
         entered ? "opacity-100" : "opacity-0"
       }`}
     >
       <div
-        className={`mx-auto flex min-h-full w-full max-w-md flex-col gap-4 p-6 transition-transform duration-300 ease-out ${
+        className={`mx-auto flex min-h-screen w-full max-w-md flex-col gap-4 p-6 transition-transform duration-300 ease-out ${
           entered ? "translate-y-0" : "translate-y-4"
         }`}
       >
@@ -518,6 +525,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
           })()
         ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
