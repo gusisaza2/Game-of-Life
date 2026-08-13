@@ -6,6 +6,7 @@ import { GoalWizard } from "@/components/manage/GoalWizard";
 import { MilestoneForm } from "@/components/manage/MilestoneForm";
 import { MilestoneRow } from "@/components/manage/MilestoneRow";
 import { GoalMilestonePath } from "@/components/manage/GoalMilestonePath";
+import { GoalPathView } from "@/components/manage/GoalPathView";
 import { AreaIcon } from "@/components/AreaIcon";
 import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
@@ -42,6 +43,7 @@ function GoalCard({
   taskRowsByMilestoneId: Map<string, { task: Task; milestoneOptions: MilestoneOption[] }[]>;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [pathViewOpen, setPathViewOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const color = areaColor(areaName);
   const sortedMilestones = [...goal.milestones].sort((a, b) => a.order_index - b.order_index);
@@ -124,10 +126,26 @@ function GoalCard({
       </div>
 
       {sortedMilestones.length > 0 && (
-        <div className="pl-11">
+        <div className="flex flex-col gap-1 pl-11">
           <GoalMilestonePath milestones={sortedMilestones} color={color} />
+          <button
+            type="button"
+            onClick={() => setPathViewOpen(true)}
+            className="link-hover self-start text-xs text-foreground/45"
+          >
+            View path
+          </button>
         </div>
       )}
+
+      <GoalPathView
+        open={pathViewOpen}
+        onClose={() => setPathViewOpen(false)}
+        goalTitle={goal.title}
+        areaName={areaName}
+        color={color}
+        milestones={sortedMilestones}
+      />
 
       <ul className="flex flex-col gap-3 pl-11">
         {sortedMilestones.map((milestone) => (
