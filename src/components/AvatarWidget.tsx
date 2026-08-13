@@ -25,10 +25,15 @@ import {
 
 type Ring = { areaName: string; fill: number; color: string };
 
+// CENTER (and so the overall canvas size, CENTER*2) stays fixed -- it's
+// already near the safe limit for the 375px mobile viewport (320px canvas
+// vs ~327px available inside the max-w-md overlay's padding). Only the
+// visual elements grow by 10%, which still leaves enough clearance
+// between the ring cluster and the avatar at the unchanged RING_RADIUS.
 const RING_RADIUS = 118;
 const CENTER = 160;
-const AVATAR_SIZE = 110;
-const RING_SIZE = 62;
+const AVATAR_SIZE = 121;
+const RING_SIZE = 68;
 
 function ringPosition(i: number) {
   const angle = (-90 + i * 72) * (Math.PI / 180);
@@ -146,7 +151,7 @@ export function AvatarWidget({
                       fill={ring.fill}
                       color={ring.color}
                       size={RING_SIZE}
-                      strokeWidth={8}
+                      strokeWidth={9}
                     />
                   </div>
                 );
@@ -160,7 +165,11 @@ export function AvatarWidget({
               if (!editing) setDraft(config);
               setEditing((v) => !v);
             }}
-            className="link-hover self-center text-xs text-foreground/45"
+            className={
+              editing
+                ? "link-hover self-center rounded-lg border border-foreground/20 px-6 py-2.5 text-sm font-medium text-foreground/60"
+                : "btn-primary self-center rounded-lg px-6 py-2.5 text-sm font-medium"
+            }
           >
             {editing ? "Cancel" : "Edit avatar"}
           </button>
