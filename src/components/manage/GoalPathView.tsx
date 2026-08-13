@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AreaIcon } from "@/components/AreaIcon";
 
 type Milestone = { id: string; title: string; status: string };
@@ -18,25 +19,34 @@ function statusLabel(isCompleted: boolean, isCurrent: boolean) {
   return "Not started";
 }
 
-const AMPLITUDE_FRAC = 0.3; // how far nodes swing from center, as a fraction of width
+// Fixed pixel coordinate space (not percentage-based) so the SVG viewBox
+// maps 1:1 to real pixels on both axes -- a fractional x-axis stretched via
+// preserveAspectRatio="none" against a real-pixel y-axis was previously
+// distorting the dashed stroke unpredictably (non-uniform scale mangles
+// dash length along diagonal segments). 320px comfortably fits inside the
+// max-w-md wrapper's content width on every viewport this app targets,
+// including the 375px mobile preset.
+const WIDTH = 320;
+const CENTER_X = WIDTH / 2;
+const AMPLITUDE = 88; // how far nodes swing from center, in px
 const SPACING_Y = 124; // px between consecutive nodes, bottom to top
 const PADDING_Y = 40;
 const NODE_R = 16;
 const LABEL_GAP = 12;
 const LABEL_WIDTH = 128;
 
-function xFrac(i: number) {
-  return 0.5 + AMPLITUDE_FRAC * Math.sin((i * Math.PI) / 2);
+function nodeX(i: number) {
+  return CENTER_X + AMPLITUDE * Math.sin((i * Math.PI) / 2);
 }
 
-function buildPathD(points: { xUnit: number; y: number }[]) {
+function buildPathD(points: { x: number; y: number }[]) {
   if (points.length < 2) return "";
-  let d = `M${points[0].xUnit} ${points[0].y}`;
+  let d = `M${points[0].x} ${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const p0 = points[i - 1];
     const p1 = points[i];
     const midY = (p0.y + p1.y) / 2;
-    d += ` C${p0.xUnit} ${midY} ${p1.xUnit} ${midY} ${p1.xUnit} ${p1.y}`;
+    d += ` C${p0.x} ${midY} ${p1.x} ${midY} ${p1.x} ${p1.y}`;
   }
   return d;
 }
@@ -80,19 +90,25 @@ export function GoalPathView({
 
   // Index 0 sits at the bottom; higher indices climb upward.
   const points = milestones.map((_, i) => ({
-    frac: xFrac(i),
-    xUnit: xFrac(i) * 100,
+    x: nodeX(i),
     y: height - PADDING_Y - i * SPACING_Y,
   }));
 
-  return (
+  // Portaled straight to document.body: template.tsx's page-transition
+  // wrapper applies a CSS transform, which per spec makes it the containing
+  // block for any position:fixed descendant. Left un-portaled, this overlay
+  // would size and position itself against the whole scrollable page
+  // instead of the actual viewport (visible as needing scrollTo(0,0) to
+  // look right, and as mt-auto pushing content to the page's bottom rather
+  // than the screen's).
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 overflow-y-auto bg-background transition-opacity duration-300 ease-out ${
         entered ? "opacity-100" : "opacity-0"
       }`}
     >
       <div
-        className={`mx-auto flex min-h-full w-full max-w-md flex-col gap-6 p-6 transition-transform duration-300 ease-out ${
+        className={`mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 p-6 transition-transform duration-300 ease-out ${
           entered ? "translate-y-0" : "translate-y-4"
         }`}
       >
@@ -114,24 +130,21 @@ export function GoalPathView({
           </button>
         </div>
 
-        <div className="relative mx-auto w-full" style={{ height }}>
+        {/* mt-auto anchors the path to the bottom of the screen, so the
+            current milestone -- always at the bottom of the climb -- sits
+            near where the player is actually looking, instead of floating
+            in the upper half with empty space below it. */}
+        <div className="relative mx-auto mt-auto" style={{ width: WIDTH, height }}>
           {n > 1 && (
-            <svg
-              width="100%"
-              height={height}
-              viewBox={`0 0 100 ${height}`}
-              preserveAspectRatio="none"
-              className="absolute inset-0"
-            >
+            <svg width={WIDTH} height={height} viewBox={`0 0 ${WIDTH} ${height}`} className="absolute inset-0">
               <path
                 d={buildPathD(points)}
                 fill="none"
                 stroke="var(--foreground)"
-                strokeOpacity={0.15}
-                strokeWidth={0.6}
-                strokeDasharray="0.3 3"
+                strokeOpacity={0.2}
+                strokeWidth={2}
+                strokeDasharray="1 8"
                 strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
               />
             </svg>
           )}
@@ -139,15 +152,12 @@ export function GoalPathView({
           {milestones.map((milestone, i) => {
             const isCompleted = milestone.status === "completed";
             const isCurrent = i === currentIndex;
-            const { frac, y } = points[i];
-            const labelOnRight = frac <= 0.5;
+            const { x, y } = points[i];
+            const labelOnRight = x <= CENTER_X;
 
             return (
               <div key={milestone.id}>
-                <div
-                  className="absolute"
-                  style={{ left: `${frac * 100}%`, top: y, transform: "translate(-50%, -50%)" }}
-                >
+                <div className="absolute" style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}>
                   {isCompleted ? (
                     <span
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
@@ -180,14 +190,14 @@ export function GoalPathView({
                   style={
                     labelOnRight
                       ? {
-                          left: `calc(${frac * 100}% + ${NODE_R + LABEL_GAP}px)`,
+                          left: x + NODE_R + LABEL_GAP,
                           top: y,
                           transform: "translateY(-50%)",
                           width: LABEL_WIDTH,
                           textAlign: "left",
                         }
                       : {
-                          right: `calc(${(1 - frac) * 100}% + ${NODE_R + LABEL_GAP}px)`,
+                          right: WIDTH - (x - NODE_R - LABEL_GAP),
                           top: y,
                           transform: "translateY(-50%)",
                           width: LABEL_WIDTH,
@@ -211,6 +221,7 @@ export function GoalPathView({
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
