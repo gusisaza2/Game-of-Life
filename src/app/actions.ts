@@ -8,8 +8,24 @@ import { registerAreaActivity, restoreAreaActivity } from "@/lib/capacity-servic
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { streakMilestoneAt, xpForStreakMilestone } from "@/lib/habit-streak";
 import { getDateString, daysBetween } from "@/lib/today";
+import type { AvatarConfig } from "@/lib/avatar";
 
 export type StreakMilestoneEvent = { day: number; xpAwarded: number };
+
+export async function updateAvatar(playerId: string, config: AvatarConfig): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("players")
+    .update({
+      avatar_gender: config.gender,
+      avatar_skin_tone: config.skinTone,
+      avatar_hair_style: config.hairStyle,
+      avatar_hair_color: config.hairColor,
+      avatar_eye_color: config.eyeColor,
+    })
+    .eq("id", playerId);
+  revalidatePath("/");
+}
 
 export async function toggleTaskCompletion(
   taskId: string,

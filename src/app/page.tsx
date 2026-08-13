@@ -16,6 +16,8 @@ import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
 import { SectionHeading } from "@/components/SectionHeading";
+import { AvatarWidget } from "@/components/AvatarWidget";
+import { AREA_COLORS, areaColor } from "@/lib/area-colors";
 // Ship is deliberately not rendered on Today right now — its visual design
 // is a separate, later pass (see CLAUDE.md). The component itself is
 // untouched; this screen just doesn't mount it tonight.
@@ -87,6 +89,34 @@ export default async function TodayPage() {
   // alike (design doc Section 2.1: immediate feedback, not the same thing
   // as cumulative_xp, which only counts Growth XP toward Nivel).
   const xpToday = (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0);
+
+  // Avatar Growth Rings (design doc Section 20): each ring = today's XP
+  // earned in that Area (any tier, same "todaysXP" the live XP counter
+  // above already sums) divided by that Area's per-area daily ceiling.
+  // Resets naturally every day since it's derived from today's logs only,
+  // no stored state of its own.
+  const taskAreaNameById = new Map(tasksWithArea.map((t) => [t.id, t.areaName]));
+  const xpTodayByArea = new Map<string, number>();
+  for (const log of logs ?? []) {
+    const areaName = taskAreaNameById.get(log.task_id);
+    if (!areaName) continue;
+    xpTodayByArea.set(areaName, (xpTodayByArea.get(areaName) ?? 0) + Number(log.xp_awarded));
+  }
+  const growthRings = Object.keys(AREA_COLORS).map((areaName) => {
+    const area = (areas ?? []).find((a) => a.name === areaName);
+    const ceiling = perAreaDailyXpCeiling(currentLevel, area?.is_foundation ?? false);
+    const earned = xpTodayByArea.get(areaName) ?? 0;
+    return { areaName, fill: ceiling > 0 ? earned / ceiling : 0, color: areaColor(areaName).accent };
+  });
+
+  const avatarConfig = {
+    gender: player.avatar_gender as "male" | "female",
+    skinTone: player.avatar_skin_tone as string,
+    hairStyle: player.avatar_hair_style as "short" | "long" | "bald",
+    hairColor: player.avatar_hair_color as string,
+    eyeColor: player.avatar_eye_color as string,
+  };
+
   const habits = tasksWithArea.filter((t) => t.tier === "habit");
   const mainTasks = tasksWithArea.filter((t) => t.tier === "main_task");
   const chores = tasksWithArea.filter((t) => t.tier === "chore");
@@ -110,11 +140,14 @@ export default async function TodayPage() {
   return (
     <main className="flex-1 flex flex-col items-center gap-6 p-6 sm:p-12">
       <div className="w-full max-w-md flex flex-col gap-5">
-        <header className="flex items-baseline justify-between">
+        <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
-          <Link href="/manage" className="link-hover text-sm text-foreground/50">
-            Manage →
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/manage" className="link-hover text-sm text-foreground/50">
+              Manage →
+            </Link>
+            <AvatarWidget playerId={player.id} config={avatarConfig} rings={growthRings} />
+          </div>
         </header>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-foreground/20 bg-surface p-5">
