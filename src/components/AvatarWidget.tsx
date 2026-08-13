@@ -25,8 +25,10 @@ import {
 
 type Ring = { areaName: string; fill: number; color: string };
 
-const RING_RADIUS = 100;
-const CENTER = 140;
+const RING_RADIUS = 118;
+const CENTER = 160;
+const AVATAR_SIZE = 110;
+const RING_SIZE = 62;
 
 function ringPosition(i: number) {
   const angle = (-90 + i * 72) * (Math.PI / 180);
@@ -117,33 +119,39 @@ export function AvatarWidget({
 
       {open && (
         <Overlay onClose={() => setOpen(false)}>
-          <div className="relative mx-auto" style={{ width: CENTER * 2, height: CENTER * 2 }}>
-            <div
-              className="absolute overflow-hidden rounded-full border-2 border-foreground/15 bg-surface"
-              style={{ width: 92, height: 92, left: CENTER, top: CENTER, transform: "translate(-50%, -50%)" }}
-            >
-              <Avatar config={editing ? draft : config} size={92} />
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <div className="relative" style={{ width: CENTER * 2, height: CENTER * 2 }}>
+              <div
+                className="absolute overflow-hidden rounded-full border-2 border-foreground/15 bg-surface"
+                style={{
+                  width: AVATAR_SIZE,
+                  height: AVATAR_SIZE,
+                  left: CENTER,
+                  top: CENTER,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <Avatar config={editing ? draft : config} size={AVATAR_SIZE} />
+              </div>
+              {rings.map((ring, i) => {
+                const { x, y } = ringPosition(i);
+                return (
+                  <div
+                    key={ring.areaName}
+                    className="absolute"
+                    style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}
+                  >
+                    <GrowthRing
+                      areaName={ring.areaName}
+                      fill={ring.fill}
+                      color={ring.color}
+                      size={RING_SIZE}
+                      strokeWidth={8}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            {rings.map((ring, i) => {
-              const { x, y } = ringPosition(i);
-              return (
-                <div
-                  key={ring.areaName}
-                  className="absolute"
-                  style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}
-                >
-                  <GrowthRing areaName={ring.areaName} fill={ring.fill} color={ring.color} />
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mx-auto flex w-full flex-col items-center gap-1">
-            {rings.map((ring) => (
-              <span key={ring.areaName} className="text-xs text-foreground/45">
-                {ring.areaName} · {Math.round(ring.fill * 100)}%
-              </span>
-            ))}
           </div>
 
           <button
