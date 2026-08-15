@@ -1,4 +1,4 @@
-import { getDateString, daysBetween } from "@/lib/today";
+import { daysBetween } from "@/lib/today";
 
 // Habit Stats — derived entirely from existing data (task_logs' completed
 // dates + a Task's activated_at), no new schema needed. Calendar month,
@@ -25,7 +25,15 @@ export function monthlyCompletionStats(
   const monthStart = `${today.slice(0, 7)}-01`;
   const activeStart = activatedDate > monthStart ? activatedDate : monthStart;
   const [year, month] = today.split("-").map(Number);
-  const monthEnd = getDateString(new Date(year, month, 0)); // day 0 of next month = last day of this month
+  // Getting the last day's NUMBER via a locally-constructed Date is fine
+  // (construction and the .getDate() read use the same implicit
+  // timezone) -- but formatting that Date through getDateString (which
+  // now explicitly reads in America/Bogota) would re-introduce the same
+  // mismatch getTodayDateString was fixed for: a server-local midnight
+  // instant re-read in Bogota time can land on the wrong day. Build the
+  // final string directly from the known numeric parts instead.
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
   const daysActive = Math.max(0, daysBetween(activeStart, monthEnd) + 1);
   const completed = completedDatesThisMonth.filter(
     (d) => d >= activeStart && d <= today,
@@ -60,7 +68,10 @@ export function buildMonthlyCalendar(
 
   const days: CalendarDay[] = [];
   for (let d = 1; d <= daysInMonth; d++) {
-    const date = getDateString(new Date(year, month - 1, d));
+    // Same fix as monthEnd above: build the string directly from the
+    // known numeric parts instead of round-tripping through a
+    // locally-constructed Date and a Bogota-aware getDateString.
+    const date = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     let status: DayStatus;
     if (date > today) status = "future";
     else if (date < activatedDate) status = "inactive";
