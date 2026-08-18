@@ -6,19 +6,30 @@
 // actual day for a multi-hour window every evening (found via a real bug
 // report: a habit marked at night showed as already-completed the next
 // afternoon, because the server had already rolled its UTC date over
-// while it was still "yesterday" in Bogota). Intl.DateTimeFormat with an
-// explicit timeZone sidesteps the process's own TZ entirely.
-const PLAYER_TIMEZONE = "America/Bogota";
-
-const dateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: PLAYER_TIMEZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+// while it was still "yesterday" in Bogota).
+//
+// A first fix used Intl.DateTimeFormat with an explicit America/Bogota
+// timeZone -- correct, and it worked in local testing, but it crashed
+// Vercel's production function outright (SIGABRT, core dump, 29ms
+// execution, zero outgoing requests -- i.e. it never even reached the
+// database, it died at module init). Vercel's Node runtime apparently
+// doesn't carry the full ICU timezone database that a locally-installed
+// Node does, so resolving a named IANA zone can abort the process at a
+// level a try/catch can't intercept, instead of cleanly throwing.
+//
+// Bogota has a fixed UTC-5 offset with no DST, so there's no need for a
+// timezone database at all -- shift the instant by a constant number of
+// hours and read it back with the UTC getters, which are plain
+// ECMAScript with no ICU dependency whatsoever.
+const BOGOTA_OFFSET_HOURS = -5;
+const BOGOTA_OFFSET_MS = BOGOTA_OFFSET_HOURS * 60 * 60 * 1000;
 
 export function getDateString(date: Date): string {
-  return dateFormatter.format(date);
+  const shifted = new Date(date.getTime() + BOGOTA_OFFSET_MS);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function getTodayDateString(): string {
@@ -26,9 +37,7 @@ export function getTodayDateString(): string {
 }
 
 export function getTomorrowDateString(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  return getDateString(date);
+  return getDateString(new Date(Date.now() + 24 * 60 * 60 * 1000));
 }
 
 export function daysBetween(earlierDate: string, laterDate: string): number {
