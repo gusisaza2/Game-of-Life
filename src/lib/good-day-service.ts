@@ -19,17 +19,49 @@ export type GoodDayResult = {
   isGoodDay: boolean;
 };
 
+// This caused a real production outage: it used to parse dateString as
+// server-local midnight, shift by `days` with local setDate/getDate, then
+// format the result through today.ts's getDateString -- which reads the
+// instant back in America/Bogota, a different zone than the server's
+// (UTC on Vercel). A UTC-midnight instant read back 5 hours earlier
+// lands on the *previous* calendar day, so addDays(date, 1) silently
+// returned the same date it was given instead of advancing. dateRange's
+// loop increments by calling addDays(current, 1) as its step, so once it
+// needed to run at all, `current` never changed and the loop pushed the
+// same string into `dates` forever -- a genuine infinite loop, not just
+// a wrong answer, that ran the server out of memory (confirmed in
+// Vercel's logs: multi-minute executions, multi-GB heap, "JavaScript
+// heap out of memory").
+//
+// Fixed by doing plain calendar-day arithmetic on the Y-M-D numbers via
+// Date.UTC/getUTC*, with no round-trip through any real-world-instant
+// timezone conversion at all -- "add N days to a date string" has
+// nothing to do with what time it is anywhere, so it shouldn't be
+// touching timezone logic in the first place.
 function addDays(dateString: string, days: number): string {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return getDateString(date);
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 // Date strings are zero-padded ISO (YYYY-MM-DD), so lexicographic order
-// matches calendar order.
+// matches calendar order. Hard-capped so that if a future date-arithmetic
+// bug reintroduces a stuck `current`, this throws a normal, immediately
+// visible exception instead of silently growing `dates` until the
+// process runs out of memory -- exactly what happened here otherwise.
+const MAX_DATE_RANGE_DAYS = 3660; // ~10 years; this app is nowhere near that old
 function dateRange(startDate: string, endDateInclusive: string): string[] {
   const dates: string[] = [];
   for (let current = startDate; current <= endDateInclusive; current = addDays(current, 1)) {
+    if (dates.length >= MAX_DATE_RANGE_DAYS) {
+      throw new Error(
+        `dateRange(${startDate}, ${endDateInclusive}) exceeded ${MAX_DATE_RANGE_DAYS} days -- likely a stuck loop, not a real range.`,
+      );
+    }
     dates.push(current);
   }
   return dates;
