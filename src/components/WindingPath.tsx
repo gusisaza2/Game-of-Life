@@ -22,17 +22,14 @@ export type PathNode = {
 // dash length along diagonal segments). 320px comfortably fits inside the
 // max-w-md wrapper's content width on every viewport this app targets,
 // including the 375px mobile preset.
+// WIDTH stays fixed regardless of `scale` -- it's the one dimension
+// that's actually load-bearing for the 375px mobile safe-width fix
+// (GoalPathView's original bug). Everything else scales from it.
 const WIDTH = 320;
 const CENTER_X = WIDTH / 2;
-const AMPLITUDE = 88; // how far nodes swing from center, in px
-const SPACING_Y = 124; // px between consecutive nodes, bottom to top
-const PADDING_Y = 40;
-const NODE_R = 16;
-const LABEL_GAP = 12;
-const LABEL_WIDTH = 128;
 
-function nodeX(i: number) {
-  return CENTER_X + AMPLITUDE * Math.sin((i * Math.PI) / 2);
+function nodeX(amplitude: number, i: number) {
+  return CENTER_X + amplitude * Math.sin((i * Math.PI) / 2);
 }
 
 function buildPathD(points: { x: number; y: number }[]) {
@@ -53,14 +50,35 @@ function statusLabel(status: PathNode["status"]) {
   return "Not started";
 }
 
-export function WindingPath({ nodes, color }: { nodes: PathNode[]; color: { accent: string; soft: string } }) {
+export function WindingPath({
+  nodes,
+  color,
+  scale = 1,
+}: {
+  nodes: PathNode[];
+  color: { accent: string; soft: string };
+  // Grows the node circles, their spacing, and the label column -- WIDTH
+  // itself never changes, so this stays mobile-safe at any scale.
+  scale?: number;
+}) {
+  const amplitude = 88 * Math.min(scale, 1.15); // capped so nodes never crowd WIDTH's edges
+  const spacingY = 124 * scale;
+  const paddingY = 40 * scale;
+  const nodeSize = 32 * scale;
+  const nodeR = nodeSize / 2;
+  const labelGap = 12 * scale;
+  const labelWidth = 128 * Math.min(scale, 1.2); // capped so long labels don't crowd the opposite column
+  const checkSize = 14 * scale;
+  const dotSize = 10 * scale;
+  const titleTextClass = scale > 1.15 ? "text-base" : "text-sm";
+
   const n = nodes.length;
-  const height = PADDING_Y * 2 + SPACING_Y * Math.max(0, n - 1);
+  const height = paddingY * 2 + spacingY * Math.max(0, n - 1);
 
   // Index 0 sits at the bottom; higher indices climb upward.
   const points = nodes.map((_, i) => ({
-    x: nodeX(i),
-    y: height - PADDING_Y - i * SPACING_Y,
+    x: nodeX(amplitude, i),
+    y: height - paddingY - i * spacingY,
   }));
 
   return (
@@ -88,10 +106,10 @@ export function WindingPath({ nodes, color }: { nodes: PathNode[]; color: { acce
             <div className="absolute" style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}>
               {node.status === "completed" ? (
                 <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: "var(--accent-primary)" }}
+                  className="flex shrink-0 items-center justify-center rounded-full"
+                  style={{ width: nodeSize, height: nodeSize, backgroundColor: "var(--accent-primary)" }}
                 >
-                  <svg viewBox="0 0 20 20" width={14} height={14} fill="none">
+                  <svg viewBox="0 0 20 20" width={checkSize} height={checkSize} fill="none">
                     <path
                       d="M5 10.5l3 3 7-7.5"
                       stroke="var(--on-accent-primary)"
@@ -103,13 +121,16 @@ export function WindingPath({ nodes, color }: { nodes: PathNode[]; color: { acce
                 </span>
               ) : node.status === "current" ? (
                 <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2"
-                  style={{ backgroundColor: color.soft, borderColor: color.accent }}
+                  className="flex shrink-0 items-center justify-center rounded-full border-2"
+                  style={{ width: nodeSize, height: nodeSize, backgroundColor: color.soft, borderColor: color.accent }}
                 >
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color.accent }} />
+                  <span className="rounded-full" style={{ width: dotSize, height: dotSize, backgroundColor: color.accent }} />
                 </span>
               ) : (
-                <span className="inline-block h-8 w-8 shrink-0 rounded-full border-[1.5px] border-foreground/30 bg-surface" />
+                <span
+                  className="inline-block shrink-0 rounded-full border-[1.5px] border-foreground/30 bg-surface"
+                  style={{ width: nodeSize, height: nodeSize }}
+                />
               )}
             </div>
 
@@ -118,23 +139,23 @@ export function WindingPath({ nodes, color }: { nodes: PathNode[]; color: { acce
               style={
                 labelOnRight
                   ? {
-                      left: x + NODE_R + LABEL_GAP,
+                      left: x + nodeR + labelGap,
                       top: y,
                       transform: "translateY(-50%)",
-                      width: LABEL_WIDTH,
+                      width: labelWidth,
                       textAlign: "left",
                     }
                   : {
-                      right: WIDTH - (x - NODE_R - LABEL_GAP),
+                      right: WIDTH - (x - nodeR - labelGap),
                       top: y,
                       transform: "translateY(-50%)",
-                      width: LABEL_WIDTH,
+                      width: labelWidth,
                       textAlign: "right",
                     }
               }
             >
               <p
-                className="text-sm"
+                className={titleTextClass}
                 style={{
                   fontWeight: node.status === "current" ? 600 : 400,
                   opacity: node.status === "current" ? 0.9 : node.status === "completed" ? 0.75 : 0.45,
