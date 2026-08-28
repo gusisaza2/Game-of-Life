@@ -1,55 +1,20 @@
 // Full-screen expansion of GoalMilestonePath.tsx's compact horizontal
 // route -- same node states (completed/current/not-started), same status
-// classification, laid out as a bottom-to-top winding path instead (per
-// Gus's direction: reads more like an actual path to climb than a flat
-// list). Overview only, same as the compact version: no task list here,
-// that already lives in the Goal card below it in Manage.
+// classification, laid out as a bottom-to-top winding path (per Gus's
+// direction: reads more like an actual path to climb than a flat list).
+// Overview only: no task list here, that already lives in the Goal card
+// below it in Manage. Drawing logic lives in WindingPath.tsx, shared with
+// the macro Voyage Map (VoyageMap.tsx) -- same visual language at a
+// different scale (design doc Section 18.2).
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AreaIcon } from "@/components/AreaIcon";
+import { WindingPath, type PathNode } from "@/components/WindingPath";
 
 type Milestone = { id: string; title: string; status: string };
-
-function statusLabel(isCompleted: boolean, isCurrent: boolean) {
-  if (isCompleted) return "Completed";
-  if (isCurrent) return "In progress";
-  return "Not started";
-}
-
-// Fixed pixel coordinate space (not percentage-based) so the SVG viewBox
-// maps 1:1 to real pixels on both axes -- a fractional x-axis stretched via
-// preserveAspectRatio="none" against a real-pixel y-axis was previously
-// distorting the dashed stroke unpredictably (non-uniform scale mangles
-// dash length along diagonal segments). 320px comfortably fits inside the
-// max-w-md wrapper's content width on every viewport this app targets,
-// including the 375px mobile preset.
-const WIDTH = 320;
-const CENTER_X = WIDTH / 2;
-const AMPLITUDE = 88; // how far nodes swing from center, in px
-const SPACING_Y = 124; // px between consecutive nodes, bottom to top
-const PADDING_Y = 40;
-const NODE_R = 16;
-const LABEL_GAP = 12;
-const LABEL_WIDTH = 128;
-
-function nodeX(i: number) {
-  return CENTER_X + AMPLITUDE * Math.sin((i * Math.PI) / 2);
-}
-
-function buildPathD(points: { x: number; y: number }[]) {
-  if (points.length < 2) return "";
-  let d = `M${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1];
-    const p1 = points[i];
-    const midY = (p0.y + p1.y) / 2;
-    d += ` C${p0.x} ${midY} ${p1.x} ${midY} ${p1.x} ${p1.y}`;
-  }
-  return d;
-}
 
 export function GoalPathView({
   open,
@@ -85,13 +50,10 @@ export function GoalPathView({
   if (!open) return null;
 
   const currentIndex = milestones.findIndex((m) => m.status !== "completed");
-  const n = milestones.length;
-  const height = PADDING_Y * 2 + SPACING_Y * Math.max(0, n - 1);
-
-  // Index 0 sits at the bottom; higher indices climb upward.
-  const points = milestones.map((_, i) => ({
-    x: nodeX(i),
-    y: height - PADDING_Y - i * SPACING_Y,
+  const nodes: PathNode[] = milestones.map((milestone, i) => ({
+    id: milestone.id,
+    label: milestone.title,
+    status: milestone.status === "completed" ? "completed" : i === currentIndex ? "current" : "locked",
   }));
 
   // Portaled straight to document.body: template.tsx's page-transition
@@ -134,91 +96,8 @@ export function GoalPathView({
             current milestone -- always at the bottom of the climb -- sits
             near where the player is actually looking, instead of floating
             in the upper half with empty space below it. */}
-        <div className="relative mx-auto mt-auto" style={{ width: WIDTH, height }}>
-          {n > 1 && (
-            <svg width={WIDTH} height={height} viewBox={`0 0 ${WIDTH} ${height}`} className="absolute inset-0">
-              <path
-                d={buildPathD(points)}
-                fill="none"
-                stroke="var(--foreground)"
-                strokeOpacity={0.2}
-                strokeWidth={2}
-                strokeDasharray="1 8"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-
-          {milestones.map((milestone, i) => {
-            const isCompleted = milestone.status === "completed";
-            const isCurrent = i === currentIndex;
-            const { x, y } = points[i];
-            const labelOnRight = x <= CENTER_X;
-
-            return (
-              <div key={milestone.id}>
-                <div className="absolute" style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}>
-                  {isCompleted ? (
-                    <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                      style={{ backgroundColor: "var(--accent-primary)" }}
-                    >
-                      <svg viewBox="0 0 20 20" width={14} height={14} fill="none">
-                        <path
-                          d="M5 10.5l3 3 7-7.5"
-                          stroke="var(--on-accent-primary)"
-                          strokeWidth={2.2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  ) : isCurrent ? (
-                    <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2"
-                      style={{ backgroundColor: color.soft, borderColor: color.accent }}
-                    >
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color.accent }} />
-                    </span>
-                  ) : (
-                    <span className="inline-block h-8 w-8 shrink-0 rounded-full border-[1.5px] border-foreground/30 bg-surface" />
-                  )}
-                </div>
-
-                <div
-                  className="absolute"
-                  style={
-                    labelOnRight
-                      ? {
-                          left: x + NODE_R + LABEL_GAP,
-                          top: y,
-                          transform: "translateY(-50%)",
-                          width: LABEL_WIDTH,
-                          textAlign: "left",
-                        }
-                      : {
-                          right: WIDTH - (x - NODE_R - LABEL_GAP),
-                          top: y,
-                          transform: "translateY(-50%)",
-                          width: LABEL_WIDTH,
-                          textAlign: "right",
-                        }
-                  }
-                >
-                  <p
-                    className="text-sm"
-                    style={{
-                      fontWeight: isCurrent ? 600 : 400,
-                      opacity: isCurrent ? 0.9 : isCompleted ? 0.75 : 0.45,
-                    }}
-                  >
-                    {milestone.title}
-                  </p>
-                  <p className="text-xs text-foreground/45">{statusLabel(isCompleted, isCurrent)}</p>
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-auto">
+          <WindingPath nodes={nodes} color={color} />
         </div>
       </div>
     </div>,

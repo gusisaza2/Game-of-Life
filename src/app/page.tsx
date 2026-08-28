@@ -166,10 +166,15 @@ export default async function TodayPage() {
           <div className="h-px bg-foreground/10" />
 
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">
-              {levelLabel}
-              {milestoneName && <span className="text-foreground/50"> · {milestoneName}</span>}
-            </p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-medium">
+                {levelLabel}
+                {milestoneName && <span className="text-foreground/50"> · {milestoneName}</span>}
+              </p>
+              <Link href="/voyage" className="link-hover shrink-0 text-xs text-foreground/45">
+                Voyage →
+              </Link>
+            </div>
             {yesterdayGoodDay && (
               <p className="flex items-center gap-1.5 text-xs text-foreground/45">
                 Yesterday:
