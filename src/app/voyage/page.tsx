@@ -46,7 +46,7 @@ export default async function VoyagePage() {
         </Link>
       </div>
       <div className="w-full max-w-md">
-        <WindingPath nodes={nodes} color={VOYAGE_COLOR} scale={1.3} />
+        <WindingPath nodes={nodes} color={VOYAGE_COLOR} scale={1.3} nodeShape="hexagon" />
       </div>
     </main>
   );

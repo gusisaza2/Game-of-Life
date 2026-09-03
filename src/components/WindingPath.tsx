@@ -50,16 +50,43 @@ function statusLabel(status: PathNode["status"]) {
   return "Not started";
 }
 
+// Flat-top hexagon, matching the classic hex-map tile orientation --
+// fits the Voyage Map's cartography framing (design doc Section 18.1:
+// the Explorer/Cartographer archetype) better than a plain circle,
+// while the Goal Milestone path keeps the circle (its default) so this
+// stays an opt-in per caller, not a change to the app's established
+// "progress node" shape everywhere else (Habit Streak rings, Growth
+// Rings, etc.).
+function hexagonPoints(size: number): string {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2;
+  // Rounded to 2 decimals: Math.cos/sin aren't guaranteed bit-identical
+  // across JS engines (server Node vs. the browser's own V8 build), so
+  // an unrounded value here was landing on a different last digit
+  // between SSR and the client and tripping a hydration mismatch --
+  // rounding away that sub-pixel noise makes the two renders match.
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return [0, 60, 120, 180, 240, 300]
+    .map((deg) => {
+      const rad = (deg * Math.PI) / 180;
+      return `${round(cx + r * Math.cos(rad))},${round(cy + r * Math.sin(rad))}`;
+    })
+    .join(" ");
+}
+
 export function WindingPath({
   nodes,
   color,
   scale = 1,
+  nodeShape = "circle",
 }: {
   nodes: PathNode[];
   color: { accent: string; soft: string };
   // Grows the node circles, their spacing, and the label column -- WIDTH
   // itself never changes, so this stays mobile-safe at any scale.
   scale?: number;
+  nodeShape?: "circle" | "hexagon";
 }) {
   const amplitude = 88 * Math.min(scale, 1.15); // capped so nodes never crowd WIDTH's edges
   const spacingY = 124 * scale;
@@ -104,7 +131,49 @@ export function WindingPath({
         return (
           <div key={node.id}>
             <div className="absolute" style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}>
-              {node.status === "completed" ? (
+              {nodeShape === "hexagon" ? (
+                <svg width={nodeSize} height={nodeSize} viewBox={`0 0 ${nodeSize} ${nodeSize}`}>
+                  {node.status === "completed" ? (
+                    <>
+                      <polygon points={hexagonPoints(nodeSize)} fill="var(--accent-primary)" />
+                      <svg
+                        x={(nodeSize - checkSize) / 2}
+                        y={(nodeSize - checkSize) / 2}
+                        width={checkSize}
+                        height={checkSize}
+                        viewBox="0 0 20 20"
+                        fill="none"
+                      >
+                        <path
+                          d="M5 10.5l3 3 7-7.5"
+                          stroke="var(--on-accent-primary)"
+                          strokeWidth={2.2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </>
+                  ) : node.status === "current" ? (
+                    <>
+                      <polygon
+                        points={hexagonPoints(nodeSize)}
+                        fill={color.soft}
+                        stroke={color.accent}
+                        strokeWidth={2}
+                      />
+                      <circle cx={nodeSize / 2} cy={nodeSize / 2} r={dotSize / 2} fill={color.accent} />
+                    </>
+                  ) : (
+                    <polygon
+                      points={hexagonPoints(nodeSize)}
+                      fill="var(--surface)"
+                      stroke="var(--foreground)"
+                      strokeOpacity={0.3}
+                      strokeWidth={1.5}
+                    />
+                  )}
+                </svg>
+              ) : node.status === "completed" ? (
                 <span
                   className="flex shrink-0 items-center justify-center rounded-full"
                   style={{ width: nodeSize, height: nodeSize, backgroundColor: "var(--accent-primary)" }}
