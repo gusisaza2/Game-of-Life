@@ -106,7 +106,7 @@ async function computeOrGetGoodDay(
   const [{ data: tasks }, { data: logs }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, tier")
+      .select("id, tier, recurrence")
       .eq("player_id", playerId)
       .eq("is_active", true),
     supabase
@@ -118,7 +118,18 @@ async function computeOrGetGoodDay(
 
   const completedIds = new Set((logs ?? []).map((log) => log.task_id));
   const byTier: Record<Tier, string[]> = { habit: [], main_task: [], chore: [] };
+  // Only `daily` tasks count as "due" for the Good Day tally -- a real bug
+  // found in production: `recurrence` was captured at creation but never
+  // actually read anywhere, so a `weekly`/`custom` task (meant to be done
+  // occasionally, not every day) was silently treated as due every single
+  // day, permanently dragging its whole category's % down. `weekly`/
+  // `custom` tasks still show up on Today and still earn XP normally when
+  // completed -- they just don't participate in this daily due/completed
+  // count, since the data model has no "which day" concept for them yet
+  // (a real per-day-of-week or rolling-window evaluation is a bigger
+  // feature than this bug fix, not attempted here).
   for (const task of tasks ?? []) {
+    if (task.recurrence !== "daily") continue;
     byTier[task.tier as Tier].push(task.id);
   }
 
