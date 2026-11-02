@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getDateString, getTodayDateString } from "@/lib/today";
-import {
-  getMonthlyCompletedDatesByTask,
-  getLifetimeCompletionCounts,
-} from "@/lib/habit-stats-service";
-import { monthlyCompletionStats, buildMonthlyCalendar } from "@/lib/habit-stats";
+import { getAllCompletedDatesByTask } from "@/lib/habit-stats-service";
+import { statsForMonth } from "@/lib/habit-stats";
 import { HabitStatsView } from "@/components/HabitStatsView";
 
 export default async function HabitStatsPage() {
   const supabase = await createClient();
   const today = getTodayDateString();
-  const [year, month] = today.split("-").map(Number);
+  const currentMonthKey = today.slice(0, 7);
 
   const { data: player } = await supabase.from("players").select("id").single();
   if (!player) {
@@ -34,24 +31,17 @@ export default async function HabitStatsPage() {
 
   const areaNameById = new Map((areas ?? []).map((a) => [a.id, a.name as string]));
   const taskIds = (habits ?? []).map((h) => h.id);
-  const monthStart = `${today.slice(0, 7)}-01`;
-
-  const [monthlyDatesByHabit, lifetimeCounts] = await Promise.all([
-    getMonthlyCompletedDatesByTask(player.id, taskIds, monthStart, today),
-    getLifetimeCompletionCounts(player.id, taskIds),
-  ]);
+  const datesByHabit = await getAllCompletedDatesByTask(player.id, taskIds);
 
   const habitStats = (habits ?? []).map((habit) => {
-    const activatedDate = getDateString(new Date(habit.activated_at));
-    const monthlyDates = monthlyDatesByHabit.get(habit.id) ?? [];
-    const monthly = monthlyCompletionStats(activatedDate, today, monthlyDates);
-    const calendar = buildMonthlyCalendar(
-      year,
-      month,
-      activatedDate,
-      today,
-      new Set(monthlyDates),
-    );
+    const completedDates = datesByHabit.get(habit.id) ?? [];
+    // The data wins over the activation timestamp: a completion logged
+    // before a habit's recorded activation date (e.g. after a day-boundary
+    // correction nudged it back a day) must still count and show up, not
+    // be dropped as "before the habit existed".
+    const activated = getDateString(new Date(habit.activated_at));
+    const activatedDate =
+      completedDates.length > 0 && completedDates[0] < activated ? completedDates[0] : activated;
 
     return {
       id: habit.id,
@@ -59,9 +49,9 @@ export default async function HabitStatsPage() {
       areaName: areaNameById.get(habit.area_id),
       currentStreak: habit.current_streak,
       longestStreak: habit.longest_streak,
-      lifetimeCompleted: lifetimeCounts.get(habit.id) ?? 0,
-      monthly,
-      calendar,
+      activatedDate,
+      completedDates,
+      monthly: statsForMonth(activatedDate, today, currentMonthKey, completedDates),
     };
   });
 
@@ -70,7 +60,7 @@ export default async function HabitStatsPage() {
       habitStats.length > 0
         ? habitStats.reduce((sum, h) => sum + h.monthly.rate, 0) / habitStats.length
         : 0,
-    totalLifetime: habitStats.reduce((sum, h) => sum + h.lifetimeCompleted, 0),
+    totalLifetime: habitStats.reduce((sum, h) => sum + h.completedDates.length, 0),
   };
 
   return (
@@ -81,7 +71,7 @@ export default async function HabitStatsPage() {
           ← Today
         </Link>
       </div>
-      <HabitStatsView habits={habitStats} aggregate={aggregate} />
+      <HabitStatsView habits={habitStats} aggregate={aggregate} today={today} />
     </main>
   );
 }

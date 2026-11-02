@@ -42,6 +42,54 @@ export function monthlyCompletionStats(
   return { completed, daysActive, rate: daysActive > 0 ? completed / daysActive : 0 };
 }
 
+// ---- Month browsing -------------------------------------------------------
+// A "month key" is a plain "YYYY-MM" string. All of this is arithmetic on
+// the numbers in that string -- never a Date round-tripped through
+// getDateString (see the day-boundary notes in CLAUDE.md).
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+export function monthLabelFor(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function shiftMonthKey(monthKey: string, delta: number): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const index = year * 12 + (month - 1) + delta;
+  return `${Math.floor(index / 12)}-${pad2((index % 12) + 1)}`;
+}
+
+// Newest first, inclusive of both ends.
+export function monthKeysDescending(fromKey: string, toKey: string): string[] {
+  const keys: string[] = [];
+  for (let key = toKey; key >= fromKey && keys.length < 1200; key = shiftMonthKey(key, -1)) {
+    keys.push(key);
+  }
+  return keys;
+}
+
+// Same stats as monthlyCompletionStats, for any month -- the current month
+// is measured against today (so nothing in the future counts), a past
+// month against its own last day.
+export function statsForMonth(
+  activatedDate: string,
+  today: string,
+  monthKey: string,
+  allCompletedDates: string[],
+): MonthlyStats {
+  const [year, month] = monthKey.split("-").map(Number);
+  const referenceDate =
+    monthKey === today.slice(0, 7)
+      ? today
+      : `${monthKey}-${pad2(new Date(year, month, 0).getDate())}`;
+  const datesInMonth = allCompletedDates.filter((d) => d.startsWith(monthKey));
+  return monthlyCompletionStats(activatedDate, referenceDate, datesInMonth);
+}
+
 export type DayStatus = "completed" | "missed" | "inactive" | "future";
 
 export type CalendarDay = {

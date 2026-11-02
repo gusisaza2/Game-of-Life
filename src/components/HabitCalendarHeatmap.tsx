@@ -5,13 +5,16 @@ const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 export function HabitCalendarHeatmap({
   calendar,
   color,
+  showLabel = true,
 }: {
   calendar: MonthlyCalendar;
   color: string;
+  // The month browser draws its own label between the prev/next arrows.
+  showLabel?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs font-medium text-foreground/60">{calendar.monthLabel}</p>
+      {showLabel && <p className="text-xs font-medium text-foreground/60">{calendar.monthLabel}</p>}
       <div className="grid grid-cols-7 gap-1.5">
         {WEEKDAY_LABELS.map((label, i) => (
           <div

@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { HabitCalendarHeatmap } from "./HabitCalendarHeatmap";
+import { HabitHistory } from "./HabitHistory";
 import { areaColor } from "@/lib/area-colors";
-import type { MonthlyCalendar } from "@/lib/habit-stats";
+import {
+  buildMonthlyCalendar,
+  monthLabelFor,
+  shiftMonthKey,
+  statsForMonth,
+  type MonthlyStats,
+} from "@/lib/habit-stats";
 
 type HabitStat = {
   id: string;
@@ -11,17 +18,62 @@ type HabitStat = {
   areaName: string | undefined;
   currentStreak: number;
   longestStreak: number;
-  lifetimeCompleted: number;
-  monthly: { completed: number; daysActive: number; rate: number };
-  calendar: MonthlyCalendar;
+  activatedDate: string;
+  completedDates: string[]; // every completion, all time, ascending
+  monthly: MonthlyStats; // the current month, for the list view
 };
 
 function formatPct(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
 
-function HabitDetail({ habit, onBack }: { habit: HabitStat; onBack: () => void }) {
+function MonthArrow({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: "prev" | "next";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={direction === "prev" ? "Previous month" : "Next month"}
+      className="link-hover flex h-8 w-8 items-center justify-center rounded-lg border border-foreground/20 text-sm text-foreground/60 disabled:opacity-25 disabled:hover:text-foreground/60"
+    >
+      {direction === "prev" ? "←" : "→"}
+    </button>
+  );
+}
+
+function HabitDetail({
+  habit,
+  today,
+  onBack,
+}: {
+  habit: HabitStat;
+  today: string;
+  onBack: () => void;
+}) {
   const color = areaColor(habit.areaName).accent;
+  const currentKey = today.slice(0, 7);
+  const [monthKey, setMonthKey] = useState(currentKey);
+
+  // Can't browse before the habit's first month, or past this one.
+  const earliestKey = habit.activatedDate.slice(0, 7);
+  const isCurrent = monthKey === currentKey;
+  const monthStats = statsForMonth(habit.activatedDate, today, monthKey, habit.completedDates);
+  const [year, month] = monthKey.split("-").map(Number);
+  const calendar = buildMonthlyCalendar(
+    year,
+    month,
+    habit.activatedDate,
+    today,
+    new Set(habit.completedDates.filter((d) => d.startsWith(monthKey))),
+  );
 
   return (
     <div className="w-full max-w-md flex flex-col gap-4">
@@ -40,11 +92,13 @@ function HabitDetail({ habit, onBack }: { habit: HabitStat; onBack: () => void }
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-0.5 rounded-lg bg-surface-hover p-3">
-            <span className="text-xs text-foreground/45">This month</span>
-            <span className="text-lg font-semibold tabular-nums">
-              {habit.monthly.completed}/{habit.monthly.daysActive}
+            <span className="text-xs text-foreground/45">
+              {isCurrent ? "This month" : monthLabelFor(monthKey)}
             </span>
-            <span className="text-xs text-foreground/40">{formatPct(habit.monthly.rate)}</span>
+            <span className="text-lg font-semibold tabular-nums">
+              {monthStats.completed}/{monthStats.daysActive}
+            </span>
+            <span className="text-xs text-foreground/40">{formatPct(monthStats.rate)}</span>
           </div>
           <div className="flex flex-col gap-0.5 rounded-lg bg-surface-hover p-3">
             <span className="text-xs text-foreground/45">Current streak</span>
@@ -60,12 +114,26 @@ function HabitDetail({ habit, onBack }: { habit: HabitStat; onBack: () => void }
           </div>
           <div className="flex flex-col gap-0.5 rounded-lg bg-surface-hover p-3">
             <span className="text-xs text-foreground/45">All time</span>
-            <span className="text-lg font-semibold tabular-nums">{habit.lifetimeCompleted}</span>
+            <span className="text-lg font-semibold tabular-nums">{habit.completedDates.length}</span>
             <span className="text-xs text-foreground/40">completions</span>
           </div>
         </div>
 
-        <HabitCalendarHeatmap calendar={habit.calendar} color={color} />
+        <div className="flex items-center justify-between gap-3">
+          <MonthArrow
+            direction="prev"
+            disabled={monthKey <= earliestKey}
+            onClick={() => setMonthKey(shiftMonthKey(monthKey, -1))}
+          />
+          <p className="text-sm font-medium">{monthLabelFor(monthKey)}</p>
+          <MonthArrow
+            direction="next"
+            disabled={isCurrent}
+            onClick={() => setMonthKey(shiftMonthKey(monthKey, 1))}
+          />
+        </div>
+
+        <HabitCalendarHeatmap calendar={calendar} color={color} showLabel={false} />
       </div>
     </div>
   );
@@ -74,15 +142,17 @@ function HabitDetail({ habit, onBack }: { habit: HabitStat; onBack: () => void }
 export function HabitStatsView({
   habits,
   aggregate,
+  today,
 }: {
   habits: HabitStat[];
   aggregate: { avgRate: number; totalLifetime: number };
+  today: string;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = habits.find((h) => h.id === selectedId);
 
   if (selected) {
-    return <HabitDetail habit={selected} onBack={() => setSelectedId(null)} />;
+    return <HabitDetail habit={selected} today={today} onBack={() => setSelectedId(null)} />;
   }
 
   if (habits.length === 0) {
@@ -126,6 +196,22 @@ export function HabitStatsView({
             </button>
           );
         })}
+      </div>
+
+      <HabitHistory habits={habits} today={today} />
+
+      <div className="flex flex-col gap-2 border-t border-foreground/10 pt-4">
+        <span className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
+          Export (CSV)
+        </span>
+        <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <a href="/api/export?dataset=completions" download className="link-hover text-foreground/60">
+            Every completion
+          </a>
+          <a href="/api/export?dataset=good-days" download className="link-hover text-foreground/60">
+            Good Days by day
+          </a>
+        </div>
       </div>
     </div>
   );
