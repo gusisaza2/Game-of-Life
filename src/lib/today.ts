@@ -36,6 +36,15 @@ export function getTodayDateString(): string {
   return getDateString(new Date());
 }
 
+// Current wall-clock time in Bogota as "HH:MM" -- same fixed-offset trick as
+// getDateString, so it needs no timezone database.
+export function getNowTimeString(): string {
+  const shifted = new Date(Date.now() + BOGOTA_OFFSET_MS);
+  const hours = String(shifted.getUTCHours()).padStart(2, "0");
+  const minutes = String(shifted.getUTCMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export function getTomorrowDateString(): string {
   return getDateString(new Date(Date.now() + 24 * 60 * 60 * 1000));
 }

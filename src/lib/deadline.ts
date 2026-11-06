@@ -90,3 +90,11 @@ export function isDueOnDay(
   if (doneDate !== null && doneDate < day) return false;
   return daysBetween(day, dueDate) <= DEADLINE_WINDOW_DAYS;
 }
+
+// Calendar-day arithmetic on a "YYYY-MM-DD" string, with no timezone in play.
+export function shiftDate(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}

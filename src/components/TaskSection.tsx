@@ -11,6 +11,8 @@ type Task = {
   title: string;
   areaName?: string;
   due_date?: string | null;
+  // The event this task prepares for, when it has one.
+  eventTitle?: string;
 };
 
 // Escalates with the clock: quiet until the window opens, stronger the day
@@ -63,10 +65,15 @@ function TaskItem({
           className="h-4 w-4 shrink-0"
           style={{ accentColor: color.accent }}
         />
-        <span
-          className={displayCompleted ? "line-through text-foreground/35" : "text-foreground/90"}
-        >
-          {task.title}
+        <span className="flex min-w-0 flex-col">
+          <span
+            className={displayCompleted ? "line-through text-foreground/35" : "text-foreground/90"}
+          >
+            {task.title}
+          </span>
+          {task.eventTitle && (
+            <span className="text-xs text-foreground/40">for: {task.eventTitle}</span>
+          )}
         </span>
         {task.due_date && !displayCompleted && (
           <DeadlineChip dueDate={task.due_date} today={today} />

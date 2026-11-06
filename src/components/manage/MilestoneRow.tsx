@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { TaskRow } from "./TaskRow";
 import { MilestoneTaskForm } from "./MilestoneTaskForm";
+import { EventForm } from "./EventForm";
+import { EventRow } from "./EventRow";
+import { useEvents } from "./EventsContext";
 import { Badge } from "@/components/Badge";
 
 type Area = { id: string; name: string };
@@ -16,6 +19,7 @@ type Task = {
   is_active: boolean;
   milestone_id: string | null;
   scheduled_activation_date: string | null;
+  event_id?: string | null;
   due_date: string | null;
   done_date: string | null;
 };
@@ -41,6 +45,15 @@ export function MilestoneRow({
 }) {
   const [showTasks, setShowTasks] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const events = useEvents()
+    .filter((e) => e.milestone_id === milestone.id)
+    .sort((a, b) =>
+      a.event_date === b.event_date
+        ? a.start_time.localeCompare(b.start_time)
+        : a.event_date.localeCompare(b.event_date),
+    );
+  const itemCount = taskRows.length + events.length;
 
   return (
     <li className="flex flex-col gap-1.5">
@@ -61,13 +74,13 @@ export function MilestoneRow({
           {milestone.status === "completed" && <Badge tone="effort">Done</Badge>}
         </p>
         <div className="flex shrink-0 gap-3 text-xs">
-          {taskRows.length > 0 && (
+          {itemCount > 0 && (
             <button
               type="button"
               onClick={() => setShowTasks((v) => !v)}
               className="link-hover text-foreground/45"
             >
-              {showTasks ? "Hide tasks" : `Tasks (${taskRows.length})`}
+              {showTasks ? "Hide" : `Tasks & events (${itemCount})`}
             </button>
           )}
           {canAddTask && (
@@ -79,8 +92,33 @@ export function MilestoneRow({
               {showAddForm ? "Cancel" : "+ Add task"}
             </button>
           )}
+          {canAddTask && (
+            <button
+              type="button"
+              onClick={() => setShowEventForm((v) => !v)}
+              className="link-hover text-foreground/45"
+            >
+              {showEventForm ? "Cancel" : "+ Add event"}
+            </button>
+          )}
         </div>
       </div>
+
+      {showTasks && events.length > 0 && (
+        <ul className="flex flex-col gap-1 pl-3">
+          {events.map((event) => (
+            <EventRow
+              key={event.id}
+              event={event}
+              areas={areas}
+              milestoneOptions={[]}
+              playerId={playerId}
+              milestoneLabel={null}
+              lockMilestone
+            />
+          ))}
+        </ul>
+      )}
 
       {showTasks && taskRows.length > 0 && (
         <ul className="flex flex-col gap-1 pl-3">
@@ -95,6 +133,19 @@ export function MilestoneRow({
             />
           ))}
         </ul>
+      )}
+
+      {showEventForm && (
+        <div className="pl-3">
+          <EventForm
+            playerId={playerId}
+            areas={areas}
+            milestoneOptions={[]}
+            milestoneId={milestone.id}
+            defaultAreaId={defaultAreaId}
+            onDone={() => setShowEventForm(false)}
+          />
+        </div>
       )}
 
       {showAddForm && (

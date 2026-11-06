@@ -5,6 +5,7 @@ import { createTask } from "@/app/manage/actions";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { needsDeadline } from "@/lib/deadline";
 import { DeadlineInput } from "./DeadlineInput";
+import { EventLinkSelect } from "./EventLinkSelect";
 
 type Area = { id: string; name: string };
 
@@ -25,11 +26,13 @@ export function MilestoneTaskForm({
 }) {
   const [tier, setTier] = useState("habit");
   const [activateNow, setActivateNow] = useState(false);
+  const [dueDate, setDueDate] = useState("");
 
   return (
     <form
       action={async (formData) => {
-        await createTask(formData);
+        const created = await createTask(formData);
+        if (created) setDueDate("");
       }}
       className="flex flex-col gap-1.5 rounded-lg border border-dashed border-foreground/15 p-2.5"
     >
@@ -81,7 +84,12 @@ export function MilestoneTaskForm({
         )}
       </div>
 
-      {needsDeadline(tier) && <DeadlineInput small />}
+      {needsDeadline(tier) && (
+        <>
+          <DeadlineInput small value={dueDate} onChange={setDueDate} />
+          <EventLinkSelect small onPick={setDueDate} />
+        </>
+      )}
 
       <div className="flex items-center justify-between gap-2">
         <label className="flex items-center gap-1.5 text-xs text-foreground/60">

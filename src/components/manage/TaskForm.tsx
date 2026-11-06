@@ -5,6 +5,7 @@ import { createTask } from "@/app/manage/actions";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { needsDeadline } from "@/lib/deadline";
 import { DeadlineInput } from "./DeadlineInput";
+import { EventLinkSelect } from "./EventLinkSelect";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -19,11 +20,13 @@ export function TaskForm({
   milestoneOptions: MilestoneOption[];
 }) {
   const [tier, setTier] = useState("habit");
+  const [dueDate, setDueDate] = useState("");
 
   return (
     <form
       action={async (formData) => {
-        await createTask(formData);
+        const created = await createTask(formData);
+        if (created) setDueDate("");
       }}
       className="flex flex-col gap-2 rounded-lg border border-foreground/20 bg-surface p-4"
     >
@@ -73,7 +76,12 @@ export function TaskForm({
         )}
       </div>
 
-      {needsDeadline(tier) && <DeadlineInput />}
+      {needsDeadline(tier) && (
+        <>
+          <DeadlineInput value={dueDate} onChange={setDueDate} />
+          <EventLinkSelect onPick={setDueDate} />
+        </>
+      )}
 
       {(tier === "main_task" || tier === "habit") && (
         <select

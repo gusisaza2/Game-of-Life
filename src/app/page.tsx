@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getDateString, getTodayDateString } from "@/lib/today";
+import { getDateString, getNowTimeString, getTodayDateString } from "@/lib/today";
 import { getYesterdayGoodDay } from "@/lib/good-day-service";
 import { refreshAllAreaCapacities } from "@/lib/capacity-service";
 import { getLevelProgress } from "@/lib/level-progress";
@@ -14,6 +14,8 @@ import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { compareByDeadline, todayPlacement } from "@/lib/deadline";
 import { TaskSection } from "@/components/TaskSection";
 import { BacklogList } from "@/components/BacklogList";
+import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
+import { agendaPlacement, compareByStart } from "@/lib/events";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
@@ -64,10 +66,12 @@ export default async function TodayPage() {
     refreshHabitStreaks(player.id, today),
   ]);
 
-  const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
+  const [{ data: tasks }, { data: logs }, { data: areas }, { data: events }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, tier, area_id, current_streak, longest_streak, activated_at, due_date, done_date")
+      .select(
+        "id, title, tier, area_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id",
+      )
       .eq("player_id", player.id)
       .eq("is_active", true)
       .order("title"),
@@ -77,6 +81,15 @@ export default async function TodayPage() {
       .eq("player_id", player.id)
       .eq("completed_date", today),
     supabase.from("areas").select("id, name, is_foundation"),
+    // Everything still scheduled, plus whatever was marked today (so a just-
+    // finished event keeps reading as done until tomorrow).
+    supabase
+      .from("events")
+      .select(
+        "id, title, area_id, event_date, start_time, end_time, location, status, resolved_on, xp_awarded",
+      )
+      .eq("player_id", player.id)
+      .or(`status.eq.scheduled,resolved_on.eq.${today}`),
   ]);
 
   const areasById = new Map((areas ?? []).map((a) => [a.id, a]));
@@ -90,7 +103,13 @@ export default async function TodayPage() {
   // Live "XP today" — every completed task's contribution, Growth or Bonus
   // alike (design doc Section 2.1: immediate feedback, not the same thing
   // as cumulative_xp, which only counts Growth XP toward Nivel).
-  const xpToday = (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0);
+  // Events marked "happened" today count too (they award XP like a Main Task).
+  const happenedToday = (events ?? []).filter(
+    (e) => e.status === "happened" && e.resolved_on === today,
+  );
+  const xpToday =
+    (logs ?? []).reduce((sum, log) => sum + Number(log.xp_awarded), 0) +
+    happenedToday.reduce((sum, e) => sum + Number(e.xp_awarded), 0);
 
   // Avatar Growth Rings (design doc Section 20): each ring = today's XP
   // earned in that Area (any tier, same "todaysXP" the live XP counter
@@ -103,6 +122,11 @@ export default async function TodayPage() {
     const areaName = taskAreaNameById.get(log.task_id);
     if (!areaName) continue;
     xpTodayByArea.set(areaName, (xpTodayByArea.get(areaName) ?? 0) + Number(log.xp_awarded));
+  }
+  for (const event of happenedToday) {
+    const areaName = areaNameById.get(event.area_id);
+    if (!areaName) continue;
+    xpTodayByArea.set(areaName, (xpTodayByArea.get(areaName) ?? 0) + Number(event.xp_awarded));
   }
   const growthRings = Object.keys(AREA_COLORS).map((areaName) => {
     const area = (areas ?? []).find((a) => a.name === areaName);
@@ -133,9 +157,36 @@ export default async function TodayPage() {
     (t) => t.tier !== "habit" && !t.due_date && !t.done_date,
   ).length;
 
+  // Agenda: events today / soon, ones whose day passed without being marked,
+  // and ones finished today. Tasks prepared for an event ride along with it.
+  const eventTitleById = new Map((events ?? []).map((e) => [e.id, e.title]));
+  const agenda: AgendaEvent[] = (events ?? [])
+    .map((e) => ({ event: e, kind: agendaPlacement(e, today) }))
+    .filter((x): x is { event: NonNullable<typeof events>[number]; kind: AgendaEvent["kind"] } =>
+      x.kind !== "hidden",
+    )
+    .sort((a, b) => compareByStart(a.event, b.event))
+    .map(({ event, kind }) => ({
+      id: event.id,
+      title: event.title,
+      event_date: event.event_date,
+      start_time: event.start_time,
+      end_time: event.end_time,
+      location: event.location,
+      areaName: areaNameById.get(event.area_id),
+      kind,
+      prepTasks: tasksWithArea
+        .filter((t) => t.event_id === event.id && !t.done_date)
+        .map((t) => t.title),
+    }));
+
   const habits = onToday.filter((t) => t.tier === "habit");
-  const mainTasks = onToday.filter((t) => t.tier === "main_task");
-  const chores = onToday.filter((t) => t.tier === "chore");
+  const mainTasks = onToday
+    .filter((t) => t.tier === "main_task")
+    .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
+  const chores = onToday
+    .filter((t) => t.tier === "chore")
+    .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
 
   // Habit Stats — this month's completion rate, shown right on the card so
   // it stays visible even when "days in a row" is 0 (design discussion:
@@ -204,6 +255,8 @@ export default async function TodayPage() {
           <LevelProgress goodDays={progress.goodDays} nivel={nivelProgress} />
         </div>
       </div>
+
+      <AgendaSection events={agenda} playerId={player.id} today={today} nowTime={getNowTimeString()} />
 
       {habits.length > 0 && (
         <div className="w-full max-w-md flex flex-col gap-3">

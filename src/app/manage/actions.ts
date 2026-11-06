@@ -23,6 +23,12 @@ function resolveDeadline(tier: string, formData: FormData): { dueDate: string | 
   return isValidDateString(raw) ? { dueDate: raw } : null;
 }
 
+// Only one-off tasks can prepare for an event; a habit never does.
+function resolveEventId(tier: string, formData: FormData): string | null {
+  if (!needsDeadline(tier)) return null;
+  return String(formData.get("eventId") ?? "") || null;
+}
+
 function resolveRecurrence(tier: string, formData: FormData): string {
   return needsDeadline(tier) ? "daily" : String(formData.get("recurrence") ?? "daily");
 }
@@ -65,8 +71,9 @@ export async function setGoalStatus(formData: FormData) {
 }
 
 // Permanent, unlike Complete/Abandon -- also removes every Milestone under
-// the Goal and every Task linked to those Milestones (task_logs cascades
-// on task delete, same as deleteTask below). Deleted explicitly and in
+// the Goal, every Task linked to those Milestones, and every event under
+// them (task_logs cascades on task delete, same as deleteTask below).
+// Deleted explicitly and in
 // dependency order rather than relying on DB cascade rules, since a Main
 // Task can never exist with a null milestone_id (CLAUDE.md's validation
 // rule) -- leaving one dangling by only deleting the Milestone would be
@@ -83,6 +90,7 @@ export async function deleteGoal(formData: FormData) {
 
   if (milestoneIds.length > 0) {
     await supabase.from("tasks").delete().in("milestone_id", milestoneIds);
+    await supabase.from("events").delete().in("milestone_id", milestoneIds);
     await supabase.from("milestones").delete().eq("goal_id", goalId);
   }
   await supabase.from("goals").delete().eq("id", goalId);
@@ -155,6 +163,7 @@ export async function createTask(formData: FormData): Promise<{ id: string } | n
       title,
       recurrence,
       due_date: deadline.dueDate,
+      event_id: resolveEventId(tier, formData),
       is_active: isActive,
     })
     .select("id")
@@ -191,6 +200,7 @@ export async function updateTask(formData: FormData) {
       area_id: areaId,
       recurrence,
       due_date: deadline.dueDate,
+      event_id: resolveEventId(tier, formData),
       milestone_id: resolveMilestoneId(tier, milestoneId),
     })
     .eq("id", taskId);

@@ -9,6 +9,7 @@ import { AreaIcon } from "@/components/AreaIcon";
 import { deadlineLabel, deadlineStatus, needsDeadline } from "@/lib/deadline";
 import { getTodayDateString } from "@/lib/today";
 import { DeadlineInput } from "./DeadlineInput";
+import { EventLinkSelect } from "./EventLinkSelect";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -21,6 +22,7 @@ type Task = {
   is_active: boolean;
   milestone_id: string | null;
   scheduled_activation_date: string | null;
+  event_id?: string | null;
   due_date: string | null;
   done_date: string | null;
 };
@@ -40,6 +42,7 @@ export function TaskRow({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tier, setTier] = useState(task.tier);
+  const [dueDate, setDueDate] = useState(task.due_date ?? "");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -207,7 +210,10 @@ export function TaskRow({
         </div>
 
         {needsDeadline(tier) && (
-          <DeadlineInput defaultValue={task.due_date ?? undefined} allowPast />
+          <>
+            <DeadlineInput value={dueDate} onChange={setDueDate} allowPast />
+            <EventLinkSelect defaultValue={task.event_id ?? ""} onPick={setDueDate} />
+          </>
         )}
 
         {(tier === "main_task" || tier === "habit") && (
@@ -236,6 +242,7 @@ export function TaskRow({
             type="button"
             onClick={() => {
               setTier(task.tier);
+              setDueDate(task.due_date ?? "");
               setIsEditing(false);
             }}
             className="link-hover rounded px-3 py-1 text-sm text-foreground/60"
