@@ -3,12 +3,27 @@
 import { areaColor } from "@/lib/area-colors";
 import { useTaskCompletion } from "@/lib/use-task-completion";
 import { SectionHeading } from "@/components/SectionHeading";
+import { Badge } from "@/components/Badge";
+import { deadlineLabel, deadlineStatus } from "@/lib/deadline";
 
 type Task = {
   id: string;
   title: string;
   areaName?: string;
+  due_date?: string | null;
 };
+
+// Escalates with the clock: quiet until the window opens, stronger the day
+// before, strongest once it's overdue -- but always a label, never a popup.
+function DeadlineChip({ dueDate, today }: { dueDate: string; today: string }) {
+  const { kind } = deadlineStatus(dueDate, today);
+  const tone = kind === "soon" ? "neutral" : "effort";
+  return (
+    <span className="ml-auto shrink-0">
+      <Badge tone={tone}>{deadlineLabel(dueDate, today)}</Badge>
+    </span>
+  );
+}
 
 function TaskItem({
   task,
@@ -53,6 +68,9 @@ function TaskItem({
         >
           {task.title}
         </span>
+        {task.due_date && !displayCompleted && (
+          <DeadlineChip dueDate={task.due_date} today={today} />
+        )}
         {flash && (
           <span
             key={flash.xpAwarded + flash.xpType}

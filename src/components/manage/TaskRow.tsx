@@ -6,6 +6,9 @@ import { areaColor } from "@/lib/area-colors";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { Badge } from "@/components/Badge";
 import { AreaIcon } from "@/components/AreaIcon";
+import { deadlineLabel, deadlineStatus, needsDeadline } from "@/lib/deadline";
+import { getTodayDateString } from "@/lib/today";
+import { DeadlineInput } from "./DeadlineInput";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -18,6 +21,8 @@ type Task = {
   is_active: boolean;
   milestone_id: string | null;
   scheduled_activation_date: string | null;
+  due_date: string | null;
+  done_date: string | null;
 };
 
 export function TaskRow({
@@ -66,6 +71,15 @@ export function TaskRow({
                   not "done" or "cancelled," and strikethrough reads as the latter. */}
               {!task.is_active && !isScheduled && <Badge tone="muted">Planned</Badge>}
               {isScheduled && <Badge tone="effort">Activates tomorrow</Badge>}
+              {task.done_date ? (
+                <Badge tone="balance">Done</Badge>
+              ) : (
+                task.due_date && (
+                  <Badge tone={deadlineStatus(task.due_date, getTodayDateString()).kind === "overdue" ? "effort" : "neutral"}>
+                    {deadlineLabel(task.due_date, getTodayDateString())}
+                  </Badge>
+                )
+              )}
             </span>
             <span className="text-xs text-foreground/40">
               {areaName}
@@ -179,16 +193,22 @@ export function TaskRow({
             ))}
           </select>
 
-          <select
-            name="recurrence"
-            defaultValue={task.recurrence}
-            className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="custom">Custom</option>
-          </select>
+          {tier === "habit" && (
+            <select
+              name="recurrence"
+              defaultValue={task.recurrence}
+              className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="custom">Custom</option>
+            </select>
+          )}
         </div>
+
+        {needsDeadline(tier) && (
+          <DeadlineInput defaultValue={task.due_date ?? undefined} allowPast />
+        )}
 
         {(tier === "main_task" || tier === "habit") && (
           <select

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getTomorrowDateString } from "@/lib/today";
+import { getTodayDateString, getTomorrowDateString } from "@/lib/today";
+import { isValidDateString, needsDeadline } from "@/lib/deadline";
 
 // Main Tasks require a Milestone (enforced again by the DB trigger).
 // Habits may optionally link to one; Chores never do (CLAUDE.md 8.2).
@@ -10,6 +11,20 @@ function resolveMilestoneId(tier: string, milestoneId: string): string | null {
   if (tier === "main_task") return milestoneId || null;
   if (tier === "habit") return milestoneId || null;
   return null;
+}
+
+// Main Tasks and Chores are one-off and always carry a deadline; Habits
+// recur and never do. A dated task's recurrence is meaningless (it's done
+// once, then done for good), so it's stored as the column default.
+// Returns null when a required deadline is missing or isn't a real date.
+function resolveDeadline(tier: string, formData: FormData): { dueDate: string | null } | null {
+  if (!needsDeadline(tier)) return { dueDate: null };
+  const raw = String(formData.get("dueDate") ?? "");
+  return isValidDateString(raw) ? { dueDate: raw } : null;
+}
+
+function resolveRecurrence(tier: string, formData: FormData): string {
+  return needsDeadline(tier) ? "daily" : String(formData.get("recurrence") ?? "daily");
 }
 
 export async function createGoal(formData: FormData): Promise<{ id: string } | null> {
@@ -113,7 +128,7 @@ export async function createTask(formData: FormData): Promise<{ id: string } | n
   const title = String(formData.get("title") ?? "").trim();
   const tier = String(formData.get("tier"));
   const areaId = String(formData.get("areaId"));
-  const recurrence = String(formData.get("recurrence"));
+  const recurrence = resolveRecurrence(tier, formData);
   const milestoneIdRaw = formData.get("milestoneId");
   const milestoneId = milestoneIdRaw ? String(milestoneIdRaw) : "";
   // Tasks added inline under a Milestone default to inactive (planned for
@@ -125,6 +140,10 @@ export async function createTask(formData: FormData): Promise<{ id: string } | n
   if (!title || !areaId) return null;
   if (tier === "main_task" && !milestoneId) return null;
 
+  const deadline = resolveDeadline(tier, formData);
+  // A brand-new task can't be given a deadline that has already passed.
+  if (!deadline || (deadline.dueDate && deadline.dueDate < getTodayDateString())) return null;
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
@@ -135,6 +154,7 @@ export async function createTask(formData: FormData): Promise<{ id: string } | n
       tier,
       title,
       recurrence,
+      due_date: deadline.dueDate,
       is_active: isActive,
     })
     .select("id")
@@ -150,12 +170,17 @@ export async function updateTask(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const tier = String(formData.get("tier"));
   const areaId = String(formData.get("areaId"));
-  const recurrence = String(formData.get("recurrence"));
+  const recurrence = resolveRecurrence(tier, formData);
   const milestoneIdRaw = formData.get("milestoneId");
   const milestoneId = milestoneIdRaw ? String(milestoneIdRaw) : "";
 
   if (!title || !areaId) return;
   if (tier === "main_task" && !milestoneId) return;
+
+  // Unlike creating, editing may keep a deadline that has already passed
+  // (an overdue task is renamed or re-linked without being rescheduled).
+  const deadline = resolveDeadline(tier, formData);
+  if (!deadline) return;
 
   const supabase = await createClient();
   await supabase
@@ -165,9 +190,26 @@ export async function updateTask(formData: FormData) {
       tier,
       area_id: areaId,
       recurrence,
+      due_date: deadline.dueDate,
       milestone_id: resolveMilestoneId(tier, milestoneId),
     })
     .eq("id", taskId);
+
+  revalidatePath("/manage");
+  revalidatePath("/");
+}
+
+// Gives an existing task its deadline (or moves it). Used by the "Needs a
+// deadline" list, and to reschedule an overdue task. Rescheduling a task that
+// was already marked done reopens nothing -- it stays done; only the date
+// changes.
+export async function setTaskDueDate(formData: FormData) {
+  const taskId = String(formData.get("taskId"));
+  const dueDate = String(formData.get("dueDate") ?? "");
+  if (!isValidDateString(dueDate)) return;
+
+  const supabase = await createClient();
+  await supabase.from("tasks").update({ due_date: dueDate }).eq("id", taskId).neq("tier", "habit");
 
   revalidatePath("/manage");
   revalidatePath("/");

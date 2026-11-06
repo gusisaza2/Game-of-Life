@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createTask } from "@/app/manage/actions";
 import { TIER_LABELS } from "@/lib/task-tiers";
+import { needsDeadline } from "@/lib/deadline";
+import { DeadlineInput } from "./DeadlineInput";
 
 type Area = { id: string; name: string };
 type MilestoneOption = { id: string; label: string };
@@ -59,15 +61,19 @@ export function TaskForm({
           ))}
         </select>
 
-        <select
-          name="recurrence"
-          className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-        >
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="custom">Custom</option>
-        </select>
+        {tier === "habit" && (
+          <select
+            name="recurrence"
+            className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="custom">Custom</option>
+          </select>
+        )}
       </div>
+
+      {needsDeadline(tier) && <DeadlineInput />}
 
       {(tier === "main_task" || tier === "habit") && (
         <select

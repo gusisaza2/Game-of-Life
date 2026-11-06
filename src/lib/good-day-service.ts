@@ -7,6 +7,7 @@ import {
 import { computeLevelUp, type PlayerLevelState } from "@/lib/level-up-service";
 import { getGateForLevel } from "@/lib/level-gates";
 import { getDateString } from "@/lib/today";
+import { isDueOnDay } from "@/lib/deadline";
 
 type Tier = "habit" | "main_task" | "chore";
 
@@ -106,7 +107,7 @@ async function computeOrGetGoodDay(
   const [{ data: tasks }, { data: logs }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, tier, recurrence")
+      .select("id, tier, recurrence, due_date, done_date, created_at")
       .eq("player_id", playerId)
       .eq("is_active", true),
     supabase
@@ -128,8 +129,17 @@ async function computeOrGetGoodDay(
   // count, since the data model has no "which day" concept for them yet
   // (a real per-day-of-week or rolling-window evaluation is a bigger
   // feature than this bug fix, not attempted here).
+  //
+  // A one-off task with a deadline is the exception: it follows the same
+  // rule Today uses to show it (see isDueOnDay), so a task sitting in the
+  // Backlog never counts against a day it wasn't on the list.
   for (const task of tasks ?? []) {
-    if (task.recurrence !== "daily") continue;
+    if (task.tier !== "habit" && task.due_date) {
+      const createdDate = getDateString(new Date(task.created_at));
+      if (!isDueOnDay(task.due_date, task.done_date, createdDate, date)) continue;
+    } else if (task.recurrence !== "daily") {
+      continue;
+    }
     byTier[task.tier as Tier].push(task.id);
   }
 

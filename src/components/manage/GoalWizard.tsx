@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { createGoal, createMilestone, createTask } from "@/app/manage/actions";
+import { needsDeadline } from "@/lib/deadline";
+import { DeadlineInput } from "./DeadlineInput";
 import { areaColor } from "@/lib/area-colors";
 import { AreaIcon } from "@/components/AreaIcon";
 import { TIER_LABELS } from "@/lib/task-tiers";
@@ -62,6 +64,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   const [taskTier, setTaskTier] = useState("habit");
   const [taskAreaId, setTaskAreaId] = useState("");
   const [taskRecurrence, setTaskRecurrence] = useState("daily");
+  const [taskDueDate, setTaskDueDate] = useState("");
   const [taskActivateNow, setTaskActivateNow] = useState(false);
   // Which Milestone (by index) Step 3 is currently guiding the player to
   // add Tasks for -- the step walks through them one at a time instead of
@@ -103,6 +106,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
     setTaskTier("habit");
     setTaskAreaId("");
     setTaskRecurrence("daily");
+    setTaskDueDate("");
     setTaskActivateNow(false);
     setTaskMilestoneIndex(0);
     setTasksByMilestone({});
@@ -143,6 +147,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
   function handleAddTask() {
     const currentMilestone = milestones[taskMilestoneIndex];
     if (!taskTitle.trim() || !taskAreaId || !currentMilestone) return;
+    if (needsDeadline(taskTier) && !taskDueDate) return;
     startTransition(async () => {
       const fd = new FormData();
       fd.set("playerId", playerId);
@@ -150,6 +155,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
       fd.set("tier", taskTier);
       fd.set("areaId", taskAreaId);
       fd.set("recurrence", taskRecurrence);
+      if (needsDeadline(taskTier)) fd.set("dueDate", taskDueDate);
       fd.set("milestoneId", currentMilestone.id);
       fd.set("isActive", taskActivateNow ? "true" : "false");
       const result = await createTask(fd);
@@ -162,6 +168,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
           ],
         }));
         setTaskTitle("");
+        setTaskDueDate("");
         setTaskActivateNow(false);
       }
     });
@@ -185,6 +192,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
       setTaskMilestoneIndex((i) => i + 1);
       setTaskTitle("");
       setTaskTier("habit");
+      setTaskDueDate("");
       setTaskActivateNow(false);
     } else {
       handleFinish();
@@ -464,16 +472,22 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
                       </option>
                     ))}
                   </select>
-                  <select
-                    value={taskRecurrence}
-                    onChange={(e) => setTaskRecurrence(e.target.value)}
-                    className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="custom">Custom</option>
-                  </select>
+                  {taskTier === "habit" && (
+                    <select
+                      value={taskRecurrence}
+                      onChange={(e) => setTaskRecurrence(e.target.value)}
+                      className="flex-1 rounded border border-foreground/20 bg-transparent px-2 py-1 text-sm"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  )}
                 </div>
+
+                {needsDeadline(taskTier) && (
+                  <DeadlineInput name="wizardDueDate" value={taskDueDate} onChange={setTaskDueDate} />
+                )}
 
                 <label className="flex items-center gap-1.5 text-xs text-foreground/60">
                   <input
@@ -488,7 +502,7 @@ export function GoalWizard({ playerId, areas }: { playerId: string; areas: Area[
                 <button
                   type="button"
                   onClick={handleAddTask}
-                  disabled={isPending || !taskTitle.trim()}
+                  disabled={isPending || !taskTitle.trim() || (needsDeadline(taskTier) && !taskDueDate)}
                   className="btn-primary self-start rounded px-3 py-1 text-sm disabled:opacity-60"
                 >
                   Add task

@@ -23,6 +23,8 @@ type Task = {
   is_active: boolean;
   milestone_id: string | null;
   scheduled_activation_date: string | null;
+  due_date: string | null;
+  done_date: string | null;
 };
 type Milestone = { id: string; title: string; order_index: number; status: string };
 type Goal = { id: string; title: string; status: string; area_id: string; milestones: Milestone[] };

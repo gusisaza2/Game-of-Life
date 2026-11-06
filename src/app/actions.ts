@@ -56,6 +56,11 @@ export async function toggleTaskCompletion(
       .eq("task_id", taskId)
       .eq("completed_date", date);
 
+    // A dated task finished on this day was marked done for good; undoing
+    // the completion reopens it. Guarded on the date so it can't clear a
+    // done_date from a different day.
+    await supabase.from("tasks").update({ done_date: null }).eq("id", taskId).eq("done_date", date);
+
     if (existingLog) {
       // Bonus XP (Task Activation Delay's same-day type) was never added to
       // cumulative_xp, so only the tier XP (if Growth) needs reversing --
@@ -129,7 +134,7 @@ export async function toggleTaskCompletion(
     supabase
       .from("tasks")
       .select(
-        "area_id, tier, source, activated_at, current_streak, longest_streak, last_streak_date, last_streak_milestone_reached",
+        "area_id, tier, source, activated_at, due_date, current_streak, longest_streak, last_streak_date, last_streak_milestone_reached",
       )
       .eq("id", taskId)
       .single(),
@@ -224,6 +229,12 @@ export async function toggleTaskCompletion(
     streak_xp_awarded: streakXp,
     ...streakSnapshot,
   });
+
+  // One-off tasks (they carry a deadline) are finished for good: done_date
+  // is what takes them off Today on every later day.
+  if (task.due_date) {
+    await supabase.from("tasks").update({ done_date: date }).eq("id", taskId);
+  }
 
   // Bonus XP (same-day-created, non-exempt tasks) doesn't feed Growth-phase
   // leveling — only Growth XP, the (always-Growth) re-engagement bonus, and

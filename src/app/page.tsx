@@ -11,7 +11,9 @@ import { refreshHabitStreaks } from "@/lib/habit-streak-service";
 import { getMonthlyCompletedDatesByTask } from "@/lib/habit-stats-service";
 import { monthlyCompletionStats } from "@/lib/habit-stats";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
+import { compareByDeadline, todayPlacement } from "@/lib/deadline";
 import { TaskSection } from "@/components/TaskSection";
+import { BacklogList } from "@/components/BacklogList";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
@@ -65,7 +67,7 @@ export default async function TodayPage() {
   const [{ data: tasks }, { data: logs }, { data: areas }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, tier, area_id, current_streak, longest_streak, activated_at")
+      .select("id, title, tier, area_id, current_streak, longest_streak, activated_at, due_date, done_date")
       .eq("player_id", player.id)
       .eq("is_active", true)
       .order("title"),
@@ -117,9 +119,23 @@ export default async function TodayPage() {
     eyeColor: player.avatar_eye_color as string,
   };
 
-  const habits = tasksWithArea.filter((t) => t.tier === "habit");
-  const mainTasks = tasksWithArea.filter((t) => t.tier === "main_task");
-  const chores = tasksWithArea.filter((t) => t.tier === "chore");
+  // One-off tasks (Missions and Chores) carry a deadline: Today shows the
+  // ones due within the next few days (and any overdue), and the rest wait
+  // in the Backlog. Finished ones are done for good. Still-undated legacy
+  // tasks keep showing until they get a date.
+  const onToday = tasksWithArea
+    .filter((t) => todayPlacement(t, today) === "shown")
+    .sort(compareByDeadline);
+  const backlog = tasksWithArea
+    .filter((t) => todayPlacement(t, today) === "backlog")
+    .sort(compareByDeadline);
+  const undatedCount = tasksWithArea.filter(
+    (t) => t.tier !== "habit" && !t.due_date && !t.done_date,
+  ).length;
+
+  const habits = onToday.filter((t) => t.tier === "habit");
+  const mainTasks = onToday.filter((t) => t.tier === "main_task");
+  const chores = onToday.filter((t) => t.tier === "chore");
 
   // Habit Stats — this month's completion rate, shown right on the card so
   // it stays visible even when "days in a row" is 0 (design discussion:
@@ -230,6 +246,16 @@ export default async function TodayPage() {
         </div>
       )}
 
+      {undatedCount > 0 && (
+        <Link
+          href="/manage#deadlines"
+          className="w-full max-w-md rounded-xl border border-foreground/20 bg-surface px-4 py-3 text-sm text-foreground/70 transition-colors hover:bg-surface-hover"
+        >
+          {undatedCount} {undatedCount === 1 ? "task needs" : "tasks need"} a deadline{" "}
+          <span className="text-foreground/45">— set dates →</span>
+        </Link>
+      )}
+
       <div className="w-full max-w-md flex flex-col gap-6">
         <TaskSection
           title="Misiones"
@@ -245,6 +271,7 @@ export default async function TodayPage() {
           playerId={player.id}
           today={today}
         />
+        <BacklogList tasks={backlog} today={today} />
       </div>
     </main>
   );

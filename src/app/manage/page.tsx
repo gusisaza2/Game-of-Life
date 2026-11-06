@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GoalsSection } from "@/components/manage/GoalsSection";
 import { TaskForm } from "@/components/manage/TaskForm";
 import { TaskRow } from "@/components/manage/TaskRow";
+import { DeadlinePanel } from "@/components/manage/DeadlinePanel";
 import { activateScheduledTasks } from "@/lib/scheduled-activation-service";
 import { getTodayDateString } from "@/lib/today";
 import { TIER_LABELS } from "@/lib/task-tiers";
@@ -40,7 +41,7 @@ export default async function ManagePage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, tier, area_id, recurrence, is_active, milestone_id, scheduled_activation_date",
+        "id, title, tier, area_id, recurrence, is_active, milestone_id, scheduled_activation_date, due_date, done_date",
       )
       .eq("player_id", player.id)
       .order("title"),
@@ -90,6 +91,12 @@ export default async function ManagePage() {
     ];
   }
 
+  // One-off tasks still waiting for a deadline (finished ones don't need one).
+  const areaNameById = new Map((areas ?? []).map((a) => [a.id, a.name as string]));
+  const undatedTasks = (tasks ?? [])
+    .filter((t) => t.tier !== "habit" && !t.due_date && !t.done_date)
+    .map((t) => ({ id: t.id, title: t.title, tier: t.tier, areaName: areaNameById.get(t.area_id) }));
+
   const tasksByTier = {
     habit: standaloneTasks.filter((t) => t.tier === "habit"),
     main_task: standaloneTasks.filter((t) => t.tier === "main_task"),
@@ -104,6 +111,8 @@ export default async function ManagePage() {
           ← Today
         </Link>
       </header>
+
+      <DeadlinePanel tasks={undatedTasks} />
 
       <GoalsSection
         goals={goals ?? []}
