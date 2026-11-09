@@ -66,7 +66,8 @@ export default async function TodayPage() {
     refreshHabitStreaks(player.id, today),
   ]);
 
-  const [{ data: tasks }, { data: logs }, { data: areas }, { data: events }] = await Promise.all([
+  const [{ data: tasks }, { data: logs }, { data: areas }, { data: events }, { data: blockRows }] =
+    await Promise.all([
     supabase
       .from("tasks")
       .select(
@@ -90,6 +91,13 @@ export default async function TodayPage() {
       )
       .eq("player_id", player.id)
       .or(`status.eq.scheduled,resolved_on.eq.${today}`),
+    // Work blocks still planned (today's, plus any whose day passed
+    // unmarked) and the ones marked today.
+    supabase
+      .from("time_blocks")
+      .select("id, task_id, block_date, start_time, end_time, status, resolved_on, tasks(title, area_id)")
+      .eq("player_id", player.id)
+      .or(`status.eq.planned,resolved_on.eq.${today}`),
   ]);
 
   const areasById = new Map((areas ?? []).map((a) => [a.id, a]));
@@ -147,11 +155,32 @@ export default async function TodayPage() {
   // ones due within the next few days (and any overdue), and the rest wait
   // in the Backlog. Finished ones are done for good. Still-undated legacy
   // tasks keep showing until they get a date.
+  // A task the player set aside time for today belongs on today's list even
+  // when its deadline is far off -- planning it is what puts it in focus.
+  type BlockEmbed = { title: string; area_id: string } | null;
+  const blocks = ((blockRows ?? []) as unknown as {
+    id: string;
+    task_id: string;
+    block_date: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+    resolved_on: string | null;
+    tasks: BlockEmbed;
+  }[]).filter(
+    (b) =>
+      (b.status === "planned" && b.block_date <= today) ||
+      (b.status === "done" && b.resolved_on === today),
+  );
+  const plannedTodayTaskIds = new Set(blocks.map((b) => b.task_id));
   const onToday = tasksWithArea
-    .filter((t) => todayPlacement(t, today) === "shown")
+    .filter((t) => {
+      const placement = todayPlacement(t, today);
+      return placement === "shown" || (placement === "backlog" && plannedTodayTaskIds.has(t.id));
+    })
     .sort(compareByDeadline);
   const backlog = tasksWithArea
-    .filter((t) => todayPlacement(t, today) === "backlog")
+    .filter((t) => todayPlacement(t, today) === "backlog" && !plannedTodayTaskIds.has(t.id))
     .sort(compareByDeadline);
   const undatedCount = tasksWithArea.filter(
     (t) => t.tier !== "habit" && !t.due_date && !t.done_date,
@@ -160,7 +189,7 @@ export default async function TodayPage() {
   // Agenda: events today / soon, ones whose day passed without being marked,
   // and ones finished today. Tasks prepared for an event ride along with it.
   const eventTitleById = new Map((events ?? []).map((e) => [e.id, e.title]));
-  const agenda: AgendaEvent[] = (events ?? [])
+  const eventItems: AgendaEvent[] = (events ?? [])
     .map((e) => ({ event: e, kind: agendaPlacement(e, today) }))
     .filter((x): x is { event: NonNullable<typeof events>[number]; kind: AgendaEvent["kind"] } =>
       x.kind !== "hidden",
@@ -175,10 +204,24 @@ export default async function TodayPage() {
       location: event.location,
       areaName: areaNameById.get(event.area_id),
       kind,
+      itemType: "event" as const,
       prepTasks: tasksWithArea
         .filter((t) => t.event_id === event.id && !t.done_date)
         .map((t) => t.title),
     }));
+  const blockItems: AgendaEvent[] = blocks.map((b) => ({
+    id: b.id,
+    title: b.tasks?.title ?? "Task",
+    event_date: b.block_date,
+    start_time: b.start_time,
+    end_time: b.end_time,
+    location: null,
+    areaName: b.tasks ? areaNameById.get(b.tasks.area_id) : undefined,
+    kind: b.status === "done" ? "done" : b.block_date < today ? "unresolved" : "upcoming",
+    itemType: "block" as const,
+    prepTasks: [],
+  }));
+  const agenda = [...eventItems, ...blockItems].sort(compareByStart);
 
   const habits = onToday.filter((t) => t.tier === "habit");
   const mainTasks = onToday
@@ -210,6 +253,9 @@ export default async function TodayPage() {
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
           <div className="flex items-center gap-3">
+            <Link href="/plan" className="link-hover text-sm text-foreground/50">
+              Plan →
+            </Link>
             <Link href="/manage" className="link-hover text-sm text-foreground/50">
               Manage →
             </Link>

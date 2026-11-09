@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setEventStatus } from "@/app/events/actions";
+import { moveBlockToTomorrow, setBlockStatus } from "@/app/plan/actions";
 import { areaColor } from "@/lib/area-colors";
 import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
@@ -16,9 +17,91 @@ export type AgendaEvent = {
   location: string | null;
   areaName?: string;
   kind: "upcoming" | "unresolved" | "done";
+  // "event" (fixed, just happens) or "block" (time the player set aside to
+  // work on a task). Blocks reuse the same card with their own buttons.
+  itemType: "event" | "block";
   // Names of the tasks prepared for this event that are still open.
   prepTasks: string[];
 };
+
+// A work block: marking it used or not never touches the task itself, and
+// there's no XP or penalty either way.
+function AgendaBlockItem({ event }: { event: AgendaEvent }) {
+  const [isPending, startTransition] = useTransition();
+  const color = areaColor(event.areaName);
+  const buttonClass = "link-hover text-xs text-foreground/60 disabled:opacity-50";
+
+  function run(action: () => Promise<void>) {
+    startTransition(async () => {
+      await action();
+    });
+  }
+
+  return (
+    <li>
+      <div
+        className="flex flex-col gap-1.5 rounded-xl border border-foreground/20 bg-surface py-3 pl-3 pr-4"
+        style={{ borderLeft: `3px solid ${color.accent}` }}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span
+            className={`min-w-0 ${event.kind === "done" ? "line-through text-foreground/35" : "text-foreground/90"}`}
+          >
+            {event.title}
+          </span>
+          {event.kind === "unresolved" ? (
+            <Badge tone="effort">Did you work on it?</Badge>
+          ) : (
+            <Badge tone="balance">Work block</Badge>
+          )}
+        </div>
+        <p className="text-xs text-foreground/50">
+          {formatTimeRange(event.start_time, event.end_time)}
+          {event.kind === "unresolved" ? ` · ${event.event_date}` : ""}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {event.kind === "done" ? (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => run(() => setBlockStatus(event.id, "planned"))}
+              className={buttonClass}
+            >
+              Undo
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => run(() => setBlockStatus(event.id, "done"))}
+                className="btn-primary rounded px-2.5 py-1 text-xs disabled:opacity-60"
+              >
+                I worked on it
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => run(() => moveBlockToTomorrow(event.id))}
+                className={buttonClass}
+              >
+                Move to tomorrow
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => run(() => setBlockStatus(event.id, "skipped"))}
+                className={buttonClass}
+              >
+                Skip
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
 
 function AgendaItem({
   event,
@@ -146,9 +229,13 @@ export function AgendaSection({
         </SectionHeading>
       </div>
       <ul className="flex flex-col gap-2">
-        {events.map((event) => (
-          <AgendaItem key={event.id} event={event} playerId={playerId} today={today} nowTime={nowTime} />
-        ))}
+        {events.map((event) =>
+          event.itemType === "block" ? (
+            <AgendaBlockItem key={`block-${event.id}`} event={event} />
+          ) : (
+            <AgendaItem key={`event-${event.id}`} event={event} playerId={playerId} today={today} nowTime={nowTime} />
+          ),
+        )}
       </ul>
     </section>
   );
