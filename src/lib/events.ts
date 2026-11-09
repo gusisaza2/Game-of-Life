@@ -1,5 +1,4 @@
 import { daysBetween } from "@/lib/today";
-import { DEADLINE_WINDOW_DAYS } from "@/lib/deadline";
 
 // Events happen at a set date and time (a studio session, an appointment).
 // They can't be done early, so unlike tasks they have no deadline -- just a
@@ -55,12 +54,14 @@ export function hasStarted(
   return nowTime >= event.start_time.slice(0, 5);
 }
 
-// Where an event belongs on Today:
-//   upcoming   -- scheduled, today or within the next few days
+// Where an event belongs on Today's Agenda. Only today's events are shown:
+// an event days away is not part of today, and a "In 3 days" label on a
+// Today list reads like a deadline. Upcoming events live in the Agenda page.
+//   upcoming   -- scheduled for today
 //   unresolved -- scheduled, but its day has passed and nobody said how it
 //                 went: asked about gently, never penalized
 //   done       -- happened and marked today (so it still reads as done)
-//   hidden     -- everything else (further out, missed, cancelled, old)
+//   hidden     -- everything else (future days, missed, cancelled, old)
 export function agendaPlacement(
   event: EventLike,
   today: string,
@@ -68,7 +69,7 @@ export function agendaPlacement(
   if (event.status === "happened") return event.resolved_on === today ? "done" : "hidden";
   if (event.status !== "scheduled") return "hidden";
   if (event.event_date < today) return "unresolved";
-  return daysBetween(today, event.event_date) <= DEADLINE_WINDOW_DAYS ? "upcoming" : "hidden";
+  return event.event_date === today ? "upcoming" : "hidden";
 }
 
 export function compareByStart(
