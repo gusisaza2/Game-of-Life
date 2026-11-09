@@ -182,9 +182,14 @@ export default async function PlanPage({
         <h1 className="text-2xl font-semibold tracking-tight">
           {date === tomorrow ? "Plan Tomorrow’s Day" : date === today ? "Plan Today" : "Plan a Day"}
         </h1>
-        <Link href="/" className="link-hover text-sm text-foreground/50">
-          ← Today
-        </Link>
+        <div className="flex items-baseline gap-4">
+          <Link href="/agenda" className="link-hover text-sm text-foreground/50">
+            Agenda →
+          </Link>
+          <Link href="/" className="link-hover text-sm text-foreground/50">
+            ← Today
+          </Link>
+        </div>
       </div>
       <PlanView
         playerId={player.id}

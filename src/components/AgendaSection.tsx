@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { setEventStatus } from "@/app/events/actions";
 import { moveBlockToTomorrow, setBlockStatus } from "@/app/plan/actions";
 import { areaColor } from "@/lib/area-colors";
 import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
 import { eventDayLabel, formatTimeRange, hasStarted } from "@/lib/events";
+import { useNow } from "@/lib/use-now";
 
 export type AgendaEvent = {
   id: string;
@@ -219,7 +221,17 @@ export function AgendaSection({
   today: string;
   nowTime: string;
 }) {
-  if (events.length === 0) return null;
+  // The page was rendered at `nowTime`, but it may stay open for hours:
+  // follow the real clock so "can be marked once it starts" flips on its own.
+  const now = useNow({ date: today, time: nowTime });
+
+  if (events.length === 0) {
+    return (
+      <Link href="/agenda" className="link-hover w-full max-w-md text-xs text-foreground/45">
+        Nothing scheduled today — open the agenda →
+      </Link>
+    );
+  }
 
   return (
     <section className="w-full max-w-md">
@@ -227,13 +239,16 @@ export function AgendaSection({
         <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
           Agenda
         </SectionHeading>
+        <Link href="/agenda" className="link-hover text-xs text-foreground/45">
+          Open agenda →
+        </Link>
       </div>
       <ul className="flex flex-col gap-2">
         {events.map((event) =>
           event.itemType === "block" ? (
             <AgendaBlockItem key={`block-${event.id}`} event={event} />
           ) : (
-            <AgendaItem key={`event-${event.id}`} event={event} playerId={playerId} today={today} nowTime={nowTime} />
+            <AgendaItem key={`event-${event.id}`} event={event} playerId={playerId} today={now.date} nowTime={now.time} />
           ),
         )}
       </ul>
