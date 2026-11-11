@@ -202,7 +202,7 @@ export function HabitStatsView({
 
       <div className="flex flex-col gap-2 border-t border-foreground/10 pt-4">
         <span className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
-          Export (CSV)
+          Export
         </span>
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <a href="/api/export?dataset=completions" download className="link-hover text-foreground/60">
@@ -210,6 +210,9 @@ export function HabitStatsView({
           </a>
           <a href="/api/export?dataset=good-days" download className="link-hover text-foreground/60">
             Good Days by day
+          </a>
+          <a href="/api/export?dataset=full" download className="link-hover text-foreground/60">
+            Full backup (JSON)
           </a>
         </div>
       </div>

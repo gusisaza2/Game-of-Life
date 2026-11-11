@@ -5,6 +5,8 @@
 //
 //   GET /api/export?dataset=completions   every Task completion
 //   GET /api/export?dataset=good-days     the per-day Good Day breakdown
+//   GET /api/export?dataset=full          EVERY table as one JSON file (the
+//                                         real backup: enough to rebuild the game)
 //
 // Like the rest of this single-player app there is no auth; this exposes
 // nothing the Today/Habit Stats pages don't already show.
@@ -60,11 +62,56 @@ type GoodDayRow = {
   is_good_day: boolean;
 };
 
+// Every table, with a stable total order so paging never repeats or skips a
+// row. Tables without an `id` order by their own key. Add new tables here when
+// a migration creates one -- a table missing from this list is missing from the
+// backup.
+const FULL_BACKUP_TABLES: { name: string; order: string[] }[] = [
+  { name: "areas", order: ["id"] },
+  { name: "players", order: ["id"] },
+  { name: "area_capacities", order: ["player_id", "area_id"] },
+  { name: "goals", order: ["id"] },
+  { name: "milestones", order: ["id"] },
+  { name: "tasks", order: ["id"] },
+  { name: "task_logs", order: ["id"] },
+  { name: "daily_good_days", order: ["player_id", "date"] },
+  { name: "events", order: ["id"] },
+  { name: "time_blocks", order: ["id"] },
+];
+
+async function fullBackup(today: string): Promise<Response> {
+  const supabase = await createClient();
+  const tables: Record<string, unknown[]> = {};
+  for (const { name, order } of FULL_BACKUP_TABLES) {
+    tables[name] = await fetchAllRows<Record<string, unknown>>((from, to) => {
+      let query = supabase.from(name).select("*");
+      for (const column of order) query = query.order(column, { ascending: true });
+      return query.range(from, to);
+    });
+  }
+  const rowCounts = Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length]));
+  const body = JSON.stringify({ exported_at: today, row_counts: rowCounts, tables }, null, 2);
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="game-of-life-backup-${today}.json"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function GET(request: Request) {
   const dataset = new URL(request.url).searchParams.get("dataset");
+  if (dataset === "full") {
+    try {
+      return await fullBackup(getTodayDateString());
+    } catch {
+      return Response.json({ error: "Export failed." }, { status: 500 });
+    }
+  }
   if (dataset !== "completions" && dataset !== "good-days") {
     return Response.json(
-      { error: 'dataset must be "completions" or "good-days"' },
+      { error: 'dataset must be "completions", "good-days" or "full"' },
       { status: 400 },
     );
   }
