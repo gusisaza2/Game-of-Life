@@ -183,7 +183,8 @@ function ItemBox({
 
   function onPointerDown(e: React.PointerEvent) {
     if (!drag || (e.pointerType === "mouse" && e.button !== 0)) return;
-    const resize = (e.target as HTMLElement).dataset.handle === "resize";
+    // The press may land on the grip's little pill (a child), not the grip itself.
+    const resize = (e.target as HTMLElement).closest("[data-handle]")?.getAttribute("data-handle") === "resize";
     const origin = resize ? drag.duration : minutesOf(item.start);
     const g: Gesture = {
       type: e.pointerType,
@@ -285,7 +286,7 @@ function ItemBox({
           // a short item (the rest of it still moves the item).
           style={{ height: Math.max(14, Math.min(28, Number(style.height) * 0.45)) }}
         >
-          <span className="h-1 w-10 rounded-full bg-foreground/35" />
+          <span className="pointer-events-none h-1 w-10 rounded-full bg-foreground/35" />
         </span>
       )}
     </button>
