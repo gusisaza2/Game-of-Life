@@ -70,6 +70,7 @@ type Gesture = {
   preview: number;
   timer?: number;
   raf?: number;
+  cleanup?: () => void;
 };
 
 function ItemBox({
@@ -135,6 +136,24 @@ function ItemBox({
     } catch {
       // Capture is a nicety; dragging still works without it.
     }
+    // A drag must always be able to end: the release can land outside the
+    // item (or the window), so watch for it on the window too, and let Escape
+    // or losing focus cancel.
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finish(false);
+    };
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("blur", onCancel);
+    window.addEventListener("keydown", onKey);
+    g.cleanup = () => {
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onCancel);
+      window.removeEventListener("keydown", onKey);
+    };
     navigator.vibrate?.(10);
     setPreview({ mode: g.mode, value: g.origin });
     g.raf = requestAnimationFrame(autoscroll);
@@ -145,6 +164,7 @@ function ItemBox({
     if (!g) return;
     window.clearTimeout(g.timer);
     if (g.raf) cancelAnimationFrame(g.raf);
+    g.cleanup?.();
     if (g.active) {
       // The click that follows a drag's release must not open the sheet; if
       // none follows (touch), don't let the flag linger into the next tap.
@@ -186,6 +206,11 @@ function ItemBox({
     const g = gesture.current;
     if (!g) return;
     g.lastClientY = e.clientY;
+    // The button was released somewhere we never heard about: end the drag.
+    if (g.active && g.type === "mouse" && e.buttons === 0) {
+      finish(true);
+      return;
+    }
     if (!g.active) {
       if (Math.abs(e.clientY - g.startY) <= MOVE_SLOP) return;
       if (g.type === "mouse") activate(e.pointerId);
@@ -255,9 +280,12 @@ function ItemBox({
         <span
           data-handle="resize"
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 flex h-3 cursor-ns-resize items-end justify-center pb-0.5"
+          className="absolute inset-x-0 bottom-0 flex cursor-ns-resize items-end justify-center pb-1"
+          // A fingertip needs room: up to 28px, but never more than ~45% of
+          // a short item (the rest of it still moves the item).
+          style={{ height: Math.max(14, Math.min(28, Number(style.height) * 0.45)) }}
         >
-          <span className="h-0.5 w-6 rounded-full bg-foreground/25" />
+          <span className="h-1 w-10 rounded-full bg-foreground/35" />
         </span>
       )}
     </button>
