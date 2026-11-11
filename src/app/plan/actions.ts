@@ -64,6 +64,8 @@ export async function updateBlock(formData: FormData) {
       end_time: fields.endTime,
       status: "planned",
       resolved_on: null,
+      // A new time is a new occasion to ask "did you work on it?".
+      prompted_at: null,
     })
     .eq("id", blockId);
 
@@ -93,7 +95,7 @@ export async function moveBlockToTomorrow(blockId: string) {
   const supabase = await createClient();
   await supabase
     .from("time_blocks")
-    .update({ block_date: getTomorrowDateString(), status: "planned", resolved_on: null })
+    .update({ block_date: getTomorrowDateString(), status: "planned", resolved_on: null, prompted_at: null })
     .eq("id", blockId);
   refresh();
 }

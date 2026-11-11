@@ -50,7 +50,7 @@ const chipClass = (active: boolean) =>
 // A bottom sheet. Portaled to <body> because template.tsx's page transition
 // puts a CSS transform on the page, which would otherwise become the
 // containing block for this fixed overlay (see CLAUDE.md).
-function Sheet({
+export function Sheet({
   title,
   subtitle,
   onClose,

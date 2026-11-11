@@ -73,6 +73,7 @@ Campos que debes enviar:
 - `end_time` debe ser **posterior** a `start_time` y el bloque debe terminar el mismo día (la base de datos rechaza lo contrario).
 - Déjalo como `planned` (valor por defecto). No lo marques como `done` ni `skipped`: lo hace Gus en la app.
 - Un bloque **no completa la tarea** ni da XP; solo reserva tiempo.
+- **No toques** `prompted_at`: la app lo usa para preguntar una sola vez «¿qué pasó con tu bloque?» cuando termina su hora.
 
 ## 6. Qué NUNCA debes tocar
 

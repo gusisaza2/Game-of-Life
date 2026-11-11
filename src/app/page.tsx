@@ -16,6 +16,8 @@ import { TaskSection } from "@/components/TaskSection";
 import { BacklogList } from "@/components/BacklogList";
 import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
 import { agendaPlacement, compareByStart } from "@/lib/events";
+import { EndedBlockPrompt, type EndedBlock } from "@/components/EndedBlockPrompt";
+import { toMinutes } from "@/lib/time-blocks";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
@@ -95,7 +97,9 @@ export default async function TodayPage() {
     // unmarked) and the ones marked today.
     supabase
       .from("time_blocks")
-      .select("id, task_id, block_date, start_time, end_time, status, resolved_on, tasks(title, area_id)")
+      .select(
+        "id, task_id, block_date, start_time, end_time, status, resolved_on, prompted_at, tasks(title, area_id)",
+      )
       .eq("player_id", player.id)
       .or(`status.eq.planned,resolved_on.eq.${today}`),
   ]);
@@ -166,6 +170,7 @@ export default async function TodayPage() {
     end_time: string;
     status: string;
     resolved_on: string | null;
+    prompted_at: string | null;
     tasks: BlockEmbed;
   }[]).filter(
     (b) =>
@@ -222,6 +227,26 @@ export default async function TodayPage() {
     prepTasks: [],
   }));
   const agenda = [...eventItems, ...blockItems].sort(compareByStart);
+
+  // Planned blocks whose time has passed and that the player hasn't been
+  // asked about yet: Today asks once ("Your work block ended").
+  const nowTime = getNowTimeString();
+  const endedBlocks: EndedBlock[] = blocks
+    .filter(
+      (b) =>
+        b.status === "planned" &&
+        !b.prompted_at &&
+        (b.block_date < today || toMinutes(b.end_time) <= toMinutes(nowTime)),
+    )
+    .sort((a, b) => a.block_date.localeCompare(b.block_date) || a.start_time.localeCompare(b.start_time))
+    .map((b) => ({
+      id: b.id,
+      taskId: b.task_id,
+      title: b.tasks?.title ?? "Task",
+      date: b.block_date,
+      start: b.start_time,
+      end: b.end_time,
+    }));
 
   const habits = onToday.filter((t) => t.tier === "habit");
   const mainTasks = onToday
@@ -302,7 +327,8 @@ export default async function TodayPage() {
         </div>
       </div>
 
-      <AgendaSection events={agenda} playerId={player.id} today={today} nowTime={getNowTimeString()} />
+      <AgendaSection events={agenda} playerId={player.id} today={today} nowTime={nowTime} />
+      <EndedBlockPrompt blocks={endedBlocks} playerId={player.id} today={today} nowTime={nowTime} />
 
       {habits.length > 0 && (
         <div className="w-full max-w-md flex flex-col gap-3">

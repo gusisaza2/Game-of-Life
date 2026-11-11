@@ -165,6 +165,7 @@ export async function applyBlockMoves(
         end_time: move.end,
         status: "planned",
         resolved_on: null,
+        prompted_at: null,
       })
       .eq("id", move.id);
     if (!error) applied++;
@@ -195,6 +196,7 @@ export async function moveBlock(
       end_time: endTime,
       status: "planned",
       resolved_on: null,
+      prompted_at: null,
     })
     .eq("id", blockId);
 
@@ -249,6 +251,18 @@ export async function moveBlockToNextFree(
 
   await applyBlockMoves([{ id: block.id, ...move.to }]);
   return move.to;
+}
+
+// "Decide later" on the ended-block prompt: the question was asked, so it
+// isn't asked again for this slot. The block stays in Today's Agenda.
+export async function markBlockPrompted(blockId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("time_blocks")
+    .update({ prompted_at: new Date().toISOString() })
+    .eq("id", blockId)
+    .is("prompted_at", null);
+  refresh();
 }
 
 export type LateTask = { id: string; title: string; due_date: string };
