@@ -126,6 +126,7 @@ function BlockSheet({
   const [start, setStart] = useState(item.start.slice(0, 5));
   const [minutes, setMinutes] = useState(length);
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const end = toMinutes(start) + minutes <= 23 * 60 + 59 ? fromMinutes(toMinutes(start) + minutes) : null;
   const clash = end ? clashWith(items, item, date, { start, end }) : undefined;
@@ -153,6 +154,64 @@ function BlockSheet({
   // a block whose day has already passed).
   const nextDay = shiftDate(item.date < today ? today : item.date, 1);
 
+  // Removing is always possible, but asked twice: a block that's only in the
+  // wrong place is better moved than lost. Removing never touches the task or
+  // any XP -- blocks award none.
+  const removeControl = confirmingRemove ? (
+    <div className="flex flex-col gap-2 rounded-lg border border-red-500/40 p-3 text-sm">
+      <p className="font-medium">Remove this work block?</p>
+      <p className="text-xs text-foreground/60">
+        The task stays as it is and no XP changes. Only the reserved time disappears. Not the right time? You can
+        move it instead.
+      </p>
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => {
+            const fd = new FormData();
+            fd.set("blockId", item.id);
+            run(() => deleteBlock(fd));
+          }}
+          className="font-medium text-red-500 hover:text-red-400"
+        >
+          Yes, remove it
+        </button>
+        {!isDone && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() =>
+              startTransition(async () => {
+                const placed = await moveBlockToNextFree(playerId, item.id);
+                if (placed) onClose();
+                else {
+                  setConfirmingRemove(false);
+                  setMessage("No free slot in the next 7 days.");
+                }
+              })
+            }
+            className="link-hover"
+          >
+            Move to next free slot
+          </button>
+        )}
+        <button type="button" onClick={() => setConfirmingRemove(false)} className="link-hover text-foreground/60">
+          Keep it
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() => setConfirmingRemove(true)}
+      className="self-start text-xs text-foreground/55 underline-offset-2 hover:text-red-500 hover:underline"
+    >
+      Remove this block
+    </button>
+  );
+
   return (
     <Sheet
       title={item.title}
@@ -170,6 +229,7 @@ function BlockSheet({
           >
             Undo — mark it as planned again
           </button>
+          {removeControl}
         </div>
       ) : (
         <>
@@ -255,28 +315,15 @@ function BlockSheet({
 
           {message && <p className="text-xs" style={{ color: "var(--accent-effort)" }}>{message}</p>}
 
-          <div className="flex gap-4 text-xs">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => run(() => setBlockStatus(item.id, "skipped"))}
-              className="link-hover text-foreground/60"
-            >
-              Skip it
-            </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => {
-                const fd = new FormData();
-                fd.set("blockId", item.id);
-                run(() => deleteBlock(fd));
-              }}
-              className="text-foreground/40 hover:text-red-500"
-            >
-              Remove
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => run(() => setBlockStatus(item.id, "skipped"))}
+            className="link-hover self-start text-xs text-foreground/60"
+          >
+            Skip it
+          </button>
+          {removeControl}
           {item.date === today && toMinutes(item.end) <= toMinutes(now) && (
             <p className="text-xs text-foreground/45">
               This one’s time has passed — move it, or mark how it went from Today.

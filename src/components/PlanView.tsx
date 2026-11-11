@@ -181,6 +181,7 @@ function TimelineRow({
   busyOthers: { slots: Slot[]; titles: string[] };
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   if (isEditing && item.kind === "block") {
@@ -215,16 +216,34 @@ function TimelineRow({
         </span>
       </div>
       {item.kind === "block" && (
-        <div className="flex shrink-0 gap-3 text-xs">
-          <button type="button" onClick={() => setIsEditing(true)} className="link-hover text-foreground/60">
-            Edit
-          </button>
-          <form action={(formData) => startTransition(() => deleteBlock(formData))}>
-            <input type="hidden" name="blockId" value={item.id} />
-            <button disabled={isPending} className="text-foreground/40 hover:text-red-500">
-              Remove
-            </button>
-          </form>
+        <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
+          {confirmingRemove ? (
+            <>
+              <span className="text-foreground/60">Remove it? You can edit the time instead.</span>
+              <form action={(formData) => startTransition(() => deleteBlock(formData))}>
+                <input type="hidden" name="blockId" value={item.id} />
+                <button disabled={isPending} className="font-medium text-red-500 hover:text-red-400">
+                  Yes, remove
+                </button>
+              </form>
+              <button type="button" onClick={() => setConfirmingRemove(false)} className="link-hover text-foreground/60">
+                Keep it
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setIsEditing(true)} className="link-hover text-foreground/60">
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingRemove(true)}
+                className="text-foreground/55 hover:text-red-500"
+              >
+                Remove
+              </button>
+            </>
+          )}
         </div>
       )}
     </li>
