@@ -52,11 +52,16 @@ type DragRule = {
   max: number;
   duration: number;
   rangeStart: number;
+  // Longest it may be stretched to (from its current start).
+  maxDuration: number;
   onDrop: (startMinutes: number) => void;
+  onResize: (minutes: number) => void;
 };
 
 type Gesture = {
   type: string;
+  // "move" drags the whole item; "resize" drags its bottom edge.
+  mode: "move" | "resize";
   startY: number;
   startScroll: number;
   origin: number;
@@ -85,7 +90,8 @@ function ItemBox({
   const ref = useRef<HTMLButtonElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const suppressClick = useRef(false);
-  const [preview, setPreview] = useState<number | null>(null);
+  // While dragging: the start (move) or the duration (resize) being previewed.
+  const [preview, setPreview] = useState<{ mode: Gesture["mode"]; value: number } | null>(null);
 
   // Once a drag is on, the page must not scroll under the finger. React's own
   // touch handlers are passive, so this one is attached by hand.
@@ -104,8 +110,11 @@ function ItemBox({
     if (!g || !drag) return;
     const delta = g.lastClientY + window.scrollY - (g.startY + g.startScroll);
     const snapped = Math.round((g.origin + delta) / DRAG_STEP) * DRAG_STEP;
-    g.preview = Math.max(drag.min, Math.min(drag.max, snapped));
-    setPreview(g.preview);
+    g.preview =
+      g.mode === "resize"
+        ? Math.max(DRAG_STEP, Math.min(drag.maxDuration, snapped))
+        : Math.max(drag.min, Math.min(drag.max, snapped));
+    setPreview({ mode: g.mode, value: g.preview });
   }
 
   function autoscroll() {
@@ -127,7 +136,7 @@ function ItemBox({
       // Capture is a nicety; dragging still works without it.
     }
     navigator.vibrate?.(10);
-    setPreview(g.origin);
+    setPreview({ mode: g.mode, value: g.origin });
     g.raf = requestAnimationFrame(autoscroll);
   }
 
@@ -143,7 +152,10 @@ function ItemBox({
       window.setTimeout(() => {
         suppressClick.current = false;
       }, 0);
-      if (commit && drag && g.preview !== g.origin) drag.onDrop(g.preview);
+      if (commit && drag && g.preview !== g.origin) {
+        if (g.mode === "resize") drag.onResize(g.preview);
+        else drag.onDrop(g.preview);
+      }
     }
     gesture.current = null;
     setPreview(null);
@@ -151,14 +163,17 @@ function ItemBox({
 
   function onPointerDown(e: React.PointerEvent) {
     if (!drag || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const resize = (e.target as HTMLElement).dataset.handle === "resize";
+    const origin = resize ? drag.duration : minutesOf(item.start);
     const g: Gesture = {
       type: e.pointerType,
+      mode: resize ? "resize" : "move",
       startY: e.clientY,
       startScroll: window.scrollY,
-      origin: minutesOf(item.start),
+      origin,
       lastClientY: e.clientY,
       active: false,
-      preview: minutesOf(item.start),
+      preview: origin,
     };
     gesture.current = g;
     if (e.pointerType !== "mouse") {
@@ -185,8 +200,17 @@ function ItemBox({
   }
 
   const dragging = preview !== null;
-  const top = dragging && drag ? (preview - drag.rangeStart) * PX_PER_MINUTE : style.top;
-  const rangeLabel = dragging && drag ? formatBlockRange(fromMinutes(preview), fromMinutes(preview + drag.duration)) : formatBlockRange(item.start, item.end);
+  const resizing = preview?.mode === "resize";
+  const movingTo = preview && !resizing ? preview.value : null;
+  const top = movingTo !== null && drag ? (movingTo - drag.rangeStart) * PX_PER_MINUTE : style.top;
+  const height =
+    resizing && drag && preview ? Math.max(MIN_ITEM_HEIGHT, preview.value * PX_PER_MINUTE - 2) : style.height;
+  const rangeLabel =
+    movingTo !== null && drag
+      ? formatBlockRange(fromMinutes(movingTo), fromMinutes(movingTo + drag.duration))
+      : resizing && preview
+        ? formatBlockRange(item.start, fromMinutes(minutesOf(item.start) + preview.value))
+        : formatBlockRange(item.start, item.end);
 
   return (
     <button
@@ -212,6 +236,7 @@ function ItemBox({
       style={{
         ...style,
         top,
+        height,
         opacity: dragging ? 1 : past ? 0.5 : 1,
         backgroundColor: isEvent ? "var(--surface)" : color.soft,
         border: isEvent ? "1px solid color-mix(in srgb, var(--foreground) 22%, transparent)" : `1px dashed ${color.accent}`,
@@ -225,6 +250,16 @@ function ItemBox({
         {isEvent ? "Event · " : "Work · "}
         {rangeLabel}
       </span>
+      {drag && (
+        // The bottom edge: drag it to change how long this lasts.
+        <span
+          data-handle="resize"
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 flex h-3 cursor-ns-resize items-end justify-center pb-0.5"
+        >
+          <span className="h-0.5 w-6 rounded-full bg-foreground/25" />
+        </span>
+      )}
     </button>
   );
 }
@@ -240,7 +275,7 @@ function DayTimeline({
   items: AgendaItem[];
   now: Now;
   onOpen: (id: string) => void;
-  onMove: (item: AgendaItem, startMinutes: number) => void;
+  onMove: (item: AgendaItem, startMinutes: number, minutes: number) => void;
 }) {
   const dayItems = items.filter((i) => i.date === date);
   const starts = dayItems.map((i) => minutesOf(i.start));
@@ -283,7 +318,15 @@ function DayTimeline({
           const max = Math.min(lastHour * 60, 24 * 60 - 1) - duration;
           const drag: DragRule | null =
             movable && max > rangeStart
-              ? { min: rangeStart, max, duration, rangeStart, onDrop: (m) => onMove(item, m) }
+              ? {
+                  min: rangeStart,
+                  max,
+                  duration,
+                  rangeStart,
+                  maxDuration: Math.min(lastHour * 60, 24 * 60 - 1) - start,
+                  onDrop: (m) => onMove(item, m, duration),
+                  onResize: (minutes) => onMove(item, start, minutes),
+                }
               : null;
           return (
             <ItemBox
@@ -413,8 +456,8 @@ export function AgendaView({
   const [, startTransition] = useTransition();
   const [moveNote, setMoveNote] = useState<{ text: string; warn: boolean } | null>(null);
 
-  function moveByDrag(item: AgendaItem, startMinutes: number) {
-    const minutes = durationMinutes(item.start, item.end);
+  function moveByDrag(item: AgendaItem, startMinutes: number, minutes: number) {
+    const resized = minutes !== durationMinutes(item.start, item.end);
     const start = fromMinutes(startMinutes);
     const end = fromMinutes(startMinutes + minutes);
     const clash = items.find(
@@ -434,8 +477,8 @@ export function AgendaView({
         !ok
           ? { text: "That didn’t move — try again.", warn: true }
           : clash
-            ? { text: `Moved to ${formatTime(start)}. It overlaps with ${clash.title}.`, warn: true }
-            : { text: `Moved to ${formatTime(start)}.`, warn: false },
+            ? { text: `${resized ? "Now ends" : "Moved to"} ${formatTime(resized ? end : start)}. It overlaps with ${clash.title}.`, warn: true }
+            : { text: resized ? `Now lasts ${formatDuration(minutes)}.` : `Moved to ${formatTime(start)}.`, warn: false },
       );
     });
   }
@@ -498,7 +541,7 @@ export function AgendaView({
         <>
           {canReschedule && (
             <p className="text-xs text-foreground/45">
-              Drag an item to move it. On a phone, press and hold first.
+              Drag an item to move it, or its bottom edge to change how long it lasts. On a phone, press and hold first.
             </p>
           )}
           {moveNote && (
