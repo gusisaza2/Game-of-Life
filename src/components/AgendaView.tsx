@@ -308,9 +308,9 @@ function DayTimeline({
 }) {
   const dayItems = items.filter((i) => i.date === date);
   const starts = dayItems.map((i) => minutesOf(i.start));
-  const ends = dayItems.map((i) => (minutesOf(i.end) > minutesOf(i.start) ? minutesOf(i.end) : 24 * 60));
   const firstHour = Math.min(7, Math.floor(Math.min(...starts, 7 * 60) / 60));
-  const lastHour = Math.max(22, Math.ceil(Math.max(...ends, 22 * 60) / 60));
+  // The day always runs to midnight (the last line reads "12 AM").
+  const lastHour = 24;
   const rangeStart = firstHour * 60;
   const height = (lastHour - firstHour) * 60 * PX_PER_MINUTE;
 
@@ -327,7 +327,7 @@ function DayTimeline({
           style={{ top: (hour * 60 - rangeStart) * PX_PER_MINUTE }}
         >
           <span className="absolute -top-2 left-0 w-10 bg-background pr-1 text-right text-[10px] tabular-nums text-foreground/40">
-            {hour === 24 ? "" : formatTime(`${String(hour).padStart(2, "0")}:00`).replace(":00", "")}
+            {hour === 24 ? "12 AM" : formatTime(`${String(hour).padStart(2, "0")}:00`).replace(":00", "")}
           </span>
         </div>
       ))}
