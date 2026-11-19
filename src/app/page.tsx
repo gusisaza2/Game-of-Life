@@ -14,6 +14,7 @@ import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { compareByDeadline, todayPlacement } from "@/lib/deadline";
 import { TaskSection } from "@/components/TaskSection";
 import { MissionGroups, type MissionGroup } from "@/components/MissionGroups";
+import { OverduePanel, type OverdueItem } from "@/components/OverduePanel";
 import { BacklogList } from "@/components/BacklogList";
 import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
 import { agendaPlacement, compareByStart } from "@/lib/events";
@@ -307,6 +308,22 @@ export default async function TodayPage() {
       return dueA.localeCompare(dueB) || a.title.localeCompare(b.title);
     });
 
+  // Open Missions/Chores whose date has passed: offered for rescheduling in
+  // bulk (Missions are labelled with their Goal, Chores with "Chores").
+  const overdueItems: OverdueItem[] = onToday
+    .filter((t) => t.tier !== "habit" && t.due_date && t.due_date < today && !completedIds.has(t.id))
+    .sort(compareByDeadline)
+    .map((t) => {
+      const milestone = t.milestone_id ? milestoneById.get(t.milestone_id) : undefined;
+      const goal = milestone ? goalById.get(milestone.goal_id) : undefined;
+      return {
+        id: t.id,
+        title: t.title,
+        due_date: t.due_date as string,
+        group: t.tier === "chore" ? "Chores" : (goal?.title ?? "Other Missions"),
+      };
+    });
+
   const chores = onToday
     .filter((t) => t.tier === "chore")
     .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
@@ -437,6 +454,7 @@ export default async function TodayPage() {
       )}
 
       <div className="w-full max-w-md flex flex-col gap-6">
+        <OverduePanel items={overdueItems} today={today} />
         <MissionGroups
           groups={missionGroups}
           completedIds={completedIds}
