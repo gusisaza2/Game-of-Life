@@ -6,7 +6,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { Badge } from "@/components/Badge";
 import { deadlineLabel, deadlineStatus } from "@/lib/deadline";
 
-type Task = {
+export type Task = {
   id: string;
   title: string;
   areaName?: string;
@@ -27,7 +27,7 @@ function DeadlineChip({ dueDate, today }: { dueDate: string; today: string }) {
   );
 }
 
-function TaskItem({
+export function TaskItem({
   task,
   completed,
   playerId,
@@ -49,7 +49,7 @@ function TaskItem({
   return (
     <li id={`task-${task.id}`} className="flex flex-col gap-1 scroll-mt-4">
       <label
-        className="group flex items-center gap-3 rounded-xl border border-foreground/20 bg-surface pl-3 pr-4 py-3 cursor-pointer transition-colors hover:bg-surface-hover"
+        className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-foreground/20 bg-surface pl-3 pr-4 py-3 cursor-pointer transition-colors hover:bg-surface-hover"
         style={{ borderLeft: `3px solid ${color.accent}` }}
       >
         <span
@@ -65,7 +65,7 @@ function TaskItem({
           className="h-4 w-4 shrink-0"
           style={{ accentColor: color.accent }}
         />
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-[8rem] flex-1 flex-col">
           <span
             className={displayCompleted ? "line-through text-foreground/35" : "text-foreground/90"}
           >

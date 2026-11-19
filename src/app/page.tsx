@@ -13,6 +13,7 @@ import { monthlyCompletionStats } from "@/lib/habit-stats";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { compareByDeadline, todayPlacement } from "@/lib/deadline";
 import { TaskSection } from "@/components/TaskSection";
+import { MissionGroups, type MissionGroup } from "@/components/MissionGroups";
 import { BacklogList } from "@/components/BacklogList";
 import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
 import { agendaPlacement, compareByStart } from "@/lib/events";
@@ -68,12 +69,20 @@ export default async function TodayPage() {
     refreshHabitStreaks(player.id, today),
   ]);
 
-  const [{ data: tasks }, { data: logs }, { data: areas }, { data: events }, { data: blockRows }] =
-    await Promise.all([
+  const [
+    { data: tasks },
+    { data: logs },
+    { data: areas },
+    { data: events },
+    { data: blockRows },
+    { data: milestoneRows },
+    { data: goalRows },
+  ] = await Promise.all([
+
     supabase
       .from("tasks")
       .select(
-        "id, title, tier, area_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id",
+        "id, title, tier, area_id, milestone_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id",
       )
       .eq("player_id", player.id)
       .eq("is_active", true)
@@ -102,6 +111,9 @@ export default async function TodayPage() {
       )
       .eq("player_id", player.id)
       .or(`status.eq.planned,resolved_on.eq.${today}`),
+    // The structure behind the Missions: Goal (project) -> Milestone.
+    supabase.from("milestones").select("id, title, goal_id, order_index"),
+    supabase.from("goals").select("id, title, area_id"),
   ]);
 
   const areasById = new Map((areas ?? []).map((a) => [a.id, a]));
@@ -254,6 +266,47 @@ export default async function TodayPage() {
   const mainTasks = onToday
     .filter((t) => t.tier === "main_task")
     .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
+  // Missions grouped the way they're organized: Goal -> Milestone (in its own
+  // order). The Goal with the most urgent open Mission comes first.
+  const milestoneById = new Map((milestoneRows ?? []).map((m) => [m.id, m]));
+  const goalById = new Map((goalRows ?? []).map((g) => [g.id, g]));
+  const byGoal = new Map<string, Map<string, typeof mainTasks>>();
+  for (const task of mainTasks) {
+    const milestone = task.milestone_id ? milestoneById.get(task.milestone_id) : undefined;
+    const goalId = milestone?.goal_id ?? "none";
+    const milestoneId = milestone?.id ?? "none";
+    if (!byGoal.has(goalId)) byGoal.set(goalId, new Map());
+    const goalMilestones = byGoal.get(goalId)!;
+    goalMilestones.set(milestoneId, [...(goalMilestones.get(milestoneId) ?? []), task]);
+  }
+  const earliestOpenDue = (tasksOfGoal: typeof mainTasks) =>
+    tasksOfGoal
+      .filter((t) => !completedIds.has(t.id) && t.due_date)
+      .map((t) => t.due_date as string)
+      .sort()[0] ?? "9999-12-31";
+  const missionGroups: MissionGroup[] = [...byGoal.entries()]
+    .map(([goalId, milestonesMap]) => {
+      const goal = goalById.get(goalId);
+      return {
+        goalId,
+        title: goal?.title ?? "Other Missions",
+        areaName: goal ? areaNameById.get(goal.area_id) : undefined,
+        milestones: [...milestonesMap.entries()]
+          .map(([milestoneId, milestoneTasks]) => ({
+            id: milestoneId,
+            title: milestoneById.get(milestoneId)?.title ?? "No milestone",
+            order: milestoneById.get(milestoneId)?.order_index ?? 9999,
+            tasks: milestoneTasks,
+          }))
+          .sort((a, b) => a.order - b.order),
+      };
+    })
+    .sort((a, b) => {
+      const dueA = earliestOpenDue(a.milestones.flatMap((m) => m.tasks));
+      const dueB = earliestOpenDue(b.milestones.flatMap((m) => m.tasks));
+      return dueA.localeCompare(dueB) || a.title.localeCompare(b.title);
+    });
+
   const chores = onToday
     .filter((t) => t.tier === "chore")
     .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
@@ -384,9 +437,8 @@ export default async function TodayPage() {
       )}
 
       <div className="w-full max-w-md flex flex-col gap-6">
-        <TaskSection
-          title="Misiones"
-          tasks={mainTasks}
+        <MissionGroups
+          groups={missionGroups}
           completedIds={completedIds}
           playerId={player.id}
           today={today}
