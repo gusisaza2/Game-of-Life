@@ -1,8 +1,8 @@
 import { AreaIcon } from "@/components/AreaIcon";
 import { SectionHeading } from "@/components/SectionHeading";
-import { TaskItem, type Task } from "@/components/TaskSection";
+import { TaskList, type Task } from "@/components/TaskSection";
 import { areaColor } from "@/lib/area-colors";
-import { compareByDeadline, deadlineStatus } from "@/lib/deadline";
+import { deadlineStatus } from "@/lib/deadline";
 
 export type MissionGroup = {
   goalId: string;
@@ -111,21 +111,14 @@ export function MissionGroups({
                           {milestoneOpen === 0 ? "done" : `${milestoneOpen} open`}
                         </span>
                       </summary>
-                      <ul className="flex flex-col gap-2 pt-1">
-                        {[...milestone.tasks]
-                          .sort((a, b) =>
-                            compareByDeadline({ ...a, due_date: a.due_date ?? null }, { ...b, due_date: b.due_date ?? null }),
-                          )
-                          .map((task) => (
-                            <TaskItem
-                              key={task.id}
-                              task={task}
-                              completed={completedIds.has(task.id)}
-                              playerId={playerId}
-                              today={today}
-                            />
-                          ))}
-                      </ul>
+                      <div className="pt-1">
+                        <TaskList
+                          tasks={milestone.tasks}
+                          completedIds={completedIds}
+                          playerId={playerId}
+                          today={today}
+                        />
+                      </div>
                     </details>
                   );
                 })}

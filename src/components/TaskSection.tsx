@@ -4,7 +4,8 @@ import { areaColor } from "@/lib/area-colors";
 import { useTaskCompletion } from "@/lib/use-task-completion";
 import { SectionHeading } from "@/components/SectionHeading";
 import { Badge } from "@/components/Badge";
-import { deadlineLabel, deadlineStatus } from "@/lib/deadline";
+import { compareByDeadline, deadlineLabel, deadlineStatus } from "@/lib/deadline";
+import { useRecentlyDone } from "@/lib/use-recently-done";
 
 export type Task = {
   id: string;
@@ -32,11 +33,14 @@ export function TaskItem({
   completed,
   playerId,
   today,
+  onCompleted,
 }: {
   task: Task;
   completed: boolean;
   playerId: string;
   today: string;
+  // Called when the player checks the task off (not when they undo it).
+  onCompleted?: (id: string) => void;
 }) {
   const {
     isPending,
@@ -61,7 +65,10 @@ export function TaskItem({
           type="checkbox"
           checked={displayCompleted}
           disabled={isPending}
-          onChange={toggle}
+          onChange={() => {
+            if (!displayCompleted) onCompleted?.(task.id);
+            toggle();
+          }}
           className="h-4 w-4 shrink-0"
           style={{ accentColor: color.accent }}
         />
@@ -102,6 +109,57 @@ export function TaskItem({
   );
 }
 
+// A list of tasks with what's done tucked away: open ones on top (soonest
+// deadline first), finished ones in a collapsed "Completed (N)" folder below.
+// A task checked off just now stays in place for a moment so its XP feedback
+// is seen, then moves into the folder.
+export function TaskList({
+  tasks,
+  completedIds,
+  playerId,
+  today,
+}: {
+  tasks: Task[];
+  completedIds: Set<string>;
+  playerId: string;
+  today: string;
+}) {
+  const { recent, mark } = useRecentlyDone();
+  const byDeadline = (a: Task, b: Task) =>
+    compareByDeadline({ ...a, due_date: a.due_date ?? null }, { ...b, due_date: b.due_date ?? null });
+  const isDone = (t: Task) => completedIds.has(t.id) && !recent.has(t.id);
+  const open = tasks.filter((t) => !isDone(t)).sort(byDeadline);
+  const done = tasks.filter(isDone).sort(byDeadline);
+
+  const row = (task: Task) => (
+    <TaskItem
+      key={task.id}
+      task={task}
+      completed={completedIds.has(task.id)}
+      playerId={playerId}
+      today={today}
+      onCompleted={mark}
+    />
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      {open.length > 0 && <ul className="flex flex-col gap-2">{open.map(row)}</ul>}
+      {done.length > 0 && (
+        <details className="group/done">
+          <summary className="flex cursor-pointer select-none list-none items-center gap-1.5 py-1 text-xs text-foreground/45 [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="text-[10px] transition-transform group-open/done:rotate-90">
+              ▸
+            </span>
+            Completed <span className="tabular-nums text-foreground/35">({done.length})</span>
+          </summary>
+          <ul className="flex flex-col gap-2 pt-1">{done.map(row)}</ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export function TaskSection({
   title,
   tasks,
@@ -129,17 +187,7 @@ export function TaskSection({
           {doneCount}/{tasks.length}
         </span>
       </div>
-      <ul className="flex flex-col gap-2">
-        {tasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            completed={completedIds.has(task.id)}
-            playerId={playerId}
-            today={today}
-          />
-        ))}
-      </ul>
+      <TaskList tasks={tasks} completedIds={completedIds} playerId={playerId} today={today} />
     </section>
   );
 }

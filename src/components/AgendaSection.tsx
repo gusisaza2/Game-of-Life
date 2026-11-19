@@ -9,6 +9,7 @@ import { Badge } from "@/components/Badge";
 import { SectionHeading } from "@/components/SectionHeading";
 import { eventDayLabel, formatTimeRange, hasStarted } from "@/lib/events";
 import { useNow } from "@/lib/use-now";
+import { useRecentlyDone } from "@/lib/use-recently-done";
 
 export type AgendaEvent = {
   id: string;
@@ -28,12 +29,13 @@ export type AgendaEvent = {
 
 // A work block: marking it used or not never touches the task itself, and
 // there's no XP or penalty either way.
-function AgendaBlockItem({ event }: { event: AgendaEvent }) {
+function AgendaBlockItem({ event, onDone }: { event: AgendaEvent; onDone: (id: string) => void }) {
   const [isPending, startTransition] = useTransition();
   const color = areaColor(event.areaName);
   const buttonClass = "link-hover text-xs text-foreground/60 disabled:opacity-50";
 
-  function run(action: () => Promise<void>) {
+  function run(action: () => Promise<void>, markDone = false) {
+    if (markDone) onDone(event.id);
     startTransition(async () => {
       await action();
     });
@@ -76,7 +78,7 @@ function AgendaBlockItem({ event }: { event: AgendaEvent }) {
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => run(() => setBlockStatus(event.id, "done"))}
+                onClick={() => run(() => setBlockStatus(event.id, "done"), true)}
                 className="btn-primary rounded px-2.5 py-1 text-xs disabled:opacity-60"
               >
                 I worked on it
@@ -110,11 +112,13 @@ function AgendaItem({
   playerId,
   today,
   nowTime,
+  onDone,
 }: {
   event: AgendaEvent;
   playerId: string;
   today: string;
   nowTime: string;
+  onDone: (id: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ xp: number; nivel: string | null } | null>(null);
@@ -122,6 +126,7 @@ function AgendaItem({
   const started = hasStarted(event, today, nowTime);
 
   function resolve(status: "happened" | "missed" | "cancelled" | "scheduled") {
+    if (status === "happened") onDone(event.id);
     startTransition(async () => {
       const res = await setEventStatus(event.id, playerId, status);
       if (status === "happened" && res) {
@@ -224,6 +229,9 @@ export function AgendaSection({
   // The page was rendered at `nowTime`, but it may stay open for hours:
   // follow the real clock so "can be marked once it starts" flips on its own.
   const now = useNow({ date: today, time: nowTime });
+  // What was finished stays put for a moment (its XP shows), then moves into
+  // the "Completed" folder.
+  const { recent, mark } = useRecentlyDone();
 
   if (events.length === 0) {
     return (
@@ -243,15 +251,40 @@ export function AgendaSection({
           Open agenda →
         </Link>
       </div>
-      <ul className="flex flex-col gap-2">
-        {events.map((event) =>
+      {(() => {
+        const isDone = (e: AgendaEvent) => e.kind === "done" && !recent.has(e.id);
+        const render = (event: AgendaEvent) =>
           event.itemType === "block" ? (
-            <AgendaBlockItem key={`block-${event.id}`} event={event} />
+            <AgendaBlockItem key={`block-${event.id}`} event={event} onDone={mark} />
           ) : (
-            <AgendaItem key={`event-${event.id}`} event={event} playerId={playerId} today={now.date} nowTime={now.time} />
-          ),
-        )}
-      </ul>
+            <AgendaItem
+              key={`event-${event.id}`}
+              event={event}
+              playerId={playerId}
+              today={now.date}
+              nowTime={now.time}
+              onDone={mark}
+            />
+          );
+        const open = events.filter((e) => !isDone(e));
+        const done = events.filter(isDone);
+        return (
+          <div className="flex flex-col gap-2">
+            {open.length > 0 && <ul className="flex flex-col gap-2">{open.map(render)}</ul>}
+            {done.length > 0 && (
+              <details className="group/done">
+                <summary className="flex cursor-pointer select-none list-none items-center gap-1.5 py-1 text-xs text-foreground/45 [&::-webkit-details-marker]:hidden">
+                  <span aria-hidden className="text-[10px] transition-transform group-open/done:rotate-90">
+                    ▸
+                  </span>
+                  Completed <span className="tabular-nums text-foreground/35">({done.length})</span>
+                </summary>
+                <ul className="flex flex-col gap-2 pt-1">{done.map(render)}</ul>
+              </details>
+            )}
+          </div>
+        );
+      })()}
     </section>
   );
 }
