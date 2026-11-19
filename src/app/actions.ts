@@ -123,6 +123,19 @@ export async function toggleTaskCompletion(
     return null;
   }
 
+  // Already completed on this day (another device, a stale page): nothing to
+  // award, and a second log row would double-count the XP.
+  const { data: alreadyDone } = await supabase
+    .from("task_logs")
+    .select("id")
+    .eq("task_id", taskId)
+    .eq("completed_date", date)
+    .limit(1);
+  if (alreadyDone && alreadyDone.length > 0) {
+    revalidatePath("/");
+    return null;
+  }
+
   // Player and task don't depend on each other -- fetch both at once
   // instead of one after the other.
   const [{ data: player }, { data: task }] = await Promise.all([

@@ -253,6 +253,40 @@ export async function moveBlockToNextFree(
   return move.to;
 }
 
+// The ended-block prompt can sit open on a page that another device has
+// already answered for. These check that the block is still waiting before
+// acting, so an answer given twice does nothing the second time.
+export async function blockIsPending(blockId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("time_blocks")
+    .select("id")
+    .eq("id", blockId)
+    .eq("status", "planned")
+    .maybeSingle();
+  return !!data;
+}
+
+// Marks a still-planned block as worked on. False when it was already
+// answered (or deleted) somewhere else.
+export async function completeEndedBlock(blockId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("time_blocks")
+    .update({ status: "done", resolved_on: getTodayDateString() })
+    .eq("id", blockId)
+    .eq("status", "planned")
+    .select("id");
+  refresh();
+  return (data?.length ?? 0) > 0;
+}
+
+export async function deleteEndedBlock(blockId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("time_blocks").delete().eq("id", blockId).eq("status", "planned");
+  refresh();
+}
+
 // "Decide later" on the ended-block prompt: the question was asked, so it
 // isn't asked again for this slot. The block stays in Today's Agenda.
 export async function markBlockPrompted(blockId: string): Promise<void> {

@@ -246,6 +246,8 @@ export default async function TodayPage() {
       date: b.block_date,
       start: b.start_time,
       end: b.end_time,
+      // Already checked off today: no need to ask whether it's finished.
+      taskCompleted: completedIds.has(b.task_id),
     }));
 
   const habits = onToday.filter((t) => t.tier === "habit");
