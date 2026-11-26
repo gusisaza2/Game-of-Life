@@ -20,6 +20,8 @@ import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
 import { agendaPlacement, compareByStart } from "@/lib/events";
 import { EndedBlockPrompt, type EndedBlock } from "@/components/EndedBlockPrompt";
 import { toMinutes } from "@/lib/time-blocks";
+import { chooseTodayChores } from "@/lib/chores";
+import { AllChores } from "@/components/AllChores";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
@@ -83,7 +85,7 @@ export default async function TodayPage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, tier, area_id, milestone_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id",
+        "id, title, tier, area_id, milestone_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id, today_pick",
       )
       .eq("player_id", player.id)
       .eq("is_active", true)
@@ -197,8 +199,31 @@ export default async function TodayPage() {
       return placement === "shown" || (placement === "backlog" && plannedTodayTaskIds.has(t.id));
     })
     .sort(compareByDeadline);
+  // Today holds at most CHORES_ON_TODAY open chores: the player's picks
+  // first, then ones with a block today, then the most urgent. The rest wait
+  // in "See all chores".
+  const openChores = tasksWithArea.filter(
+    (t) => t.tier === "chore" && !t.done_date && !completedIds.has(t.id),
+  );
+  const todayChoreIds = new Set(
+    chooseTodayChores(
+      openChores.map((t) => ({
+        id: t.id,
+        title: t.title,
+        due_date: t.due_date,
+        today_pick: t.today_pick,
+        hasBlockToday: plannedTodayTaskIds.has(t.id),
+        due: todayPlacement(t, today) === "shown",
+      })),
+    ),
+  );
   const backlog = tasksWithArea
-    .filter((t) => todayPlacement(t, today) === "backlog" && !plannedTodayTaskIds.has(t.id))
+    .filter(
+      (t) =>
+        todayPlacement(t, today) === "backlog" &&
+        !plannedTodayTaskIds.has(t.id) &&
+        !todayChoreIds.has(t.id),
+    )
     .sort(compareByDeadline);
   const undatedCount = tasksWithArea.filter(
     (t) => t.tier !== "habit" && !t.due_date && !t.done_date,
@@ -324,9 +349,20 @@ export default async function TodayPage() {
       };
     });
 
-  const chores = onToday
-    .filter((t) => t.tier === "chore")
-    .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
+  // Today's chore list: the ones holding a slot, plus whatever was finished
+  // today (those sit in the Completed folder).
+  const chores = [
+    ...tasksWithArea.filter((t) => todayChoreIds.has(t.id)),
+    ...onToday.filter((t) => t.tier === "chore" && (completedIds.has(t.id) || t.done_date)),
+  ].map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
+  const toChoreRow = (t: (typeof openChores)[number]) => ({
+    id: t.id,
+    title: t.title,
+    due_date: t.due_date,
+    areaName: t.areaName,
+  });
+  const activeChores = openChores.filter((t) => todayChoreIds.has(t.id)).sort(compareByDeadline).map(toChoreRow);
+  const otherChores = openChores.filter((t) => !todayChoreIds.has(t.id)).sort(compareByDeadline).map(toChoreRow);
 
   // Habit Stats — this month's completion rate, shown right on the card so
   // it stays visible even when "days in a row" is 0 (design discussion:
@@ -461,13 +497,16 @@ export default async function TodayPage() {
           playerId={player.id}
           today={today}
         />
-        <TaskSection
-          title="Chores"
-          tasks={chores}
-          completedIds={completedIds}
-          playerId={player.id}
-          today={today}
-        />
+        <div className="flex w-full max-w-md flex-col gap-2">
+          <TaskSection
+            title="Chores"
+            tasks={chores}
+            completedIds={completedIds}
+            playerId={player.id}
+            today={today}
+          />
+          <AllChores active={activeChores} others={otherChores} today={today} />
+        </div>
         <BacklogList tasks={backlog} today={today} />
       </div>
     </main>

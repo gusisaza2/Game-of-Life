@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   calculateCategoryPct,
+  calculateChorePct,
   calculateGoodDayPct,
   isGoodDay,
 } from "@/lib/good-day";
@@ -151,7 +152,8 @@ async function computeOrGetGoodDay(
     byTier.main_task.length,
     completedInTier("main_task"),
   );
-  const chorePct = calculateCategoryPct(byTier.chore.length, completedInTier("chore"));
+  const choresDone = (tasks ?? []).filter((t) => t.tier === "chore" && completedIds.has(t.id)).length;
+  const chorePct = calculateChorePct(byTier.chore.length, choresDone);
   const goodDayPct = calculateGoodDayPct(habitPct, mainTaskPct, chorePct);
   const goodDay = isGoodDay(goodDayPct);
 

@@ -57,7 +57,7 @@ Campos que debes enviar:
 - `event_id`: si la tarea es preparación de un evento, pon el `id` del evento. Su `due_date` debería ser, como máximo, el día anterior al evento.
 - Déjala con `is_active` = `true` (el valor por defecto) para que aparezca en la app. `recurrence` déjalo en su valor por defecto (`daily`); en tareas con fecha no significa nada.
 
-**No envíes ni modifiques nunca:** `done_date`, `activated_at`, `current_streak`, `longest_streak`, `last_streak_date`, `last_streak_milestone_reached`, `scheduled_activation_date`, `source`. Las completa la app.
+**No envíes ni modifiques nunca:** `today_pick`, `done_date`, `activated_at`, `current_streak`, `longest_streak`, `last_streak_date`, `last_streak_milestone_reached`, `scheduled_activation_date`, `source`. Las completa la app.
 
 ### 5.3.1 Cómo se completa una tarea
 **No marques tareas como hechas desde aquí.** Cuando Gus completa una tarea en la app, esta calcula XP, racha y capacidad del área. Si cambias `done_date` a mano te saltas todo eso. Si Gus te dice que terminó algo, díselo y que lo marque en la app.

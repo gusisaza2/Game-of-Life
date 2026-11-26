@@ -108,6 +108,8 @@ is_good_day  = good_day_pct >= 0.80
 
 If a category has zero items due that day, treat that category's completion as 1.0 (don't penalize for a category with nothing scheduled).
 
+**Chores are capped at 3 per day (approved by Gus):** Today never shows more than 3 open chores, so `chore_pct = min(chores completed that day, asked) / asked`, where `asked = min(chores due, 3)` (`calculateChorePct`). Any chore completed that day counts, including one swapped onto Today before it was due. Days already finalized were not recomputed.
+
 ### 3. Area weights by level (Levels 1-3 only needed for MVP)
 ```
 Level 1: Physical=0.340, Mental=0.340, Career=0.107, Relationships=0.107, Exploration=0.107
@@ -312,6 +314,9 @@ Three new systems were designed together in one session; the Voyage Map (Section
 ---
 
 ## Implemented since Phase 1 (running log, newest first — keep this current)
+
+### Today holds at most 3 chores, with "See all chores" to swap them (third step of taming the long list)
+`chooseTodayChores` (`src/lib/chores.ts`, `CHORES_ON_TODAY = 3`) fills Today's chore slots with: the player's **picks** (oldest pick first), then chores **with a work block today**, then the **most urgent due** ones (undated, due soon or overdue). Chores not due yet only appear if picked. Finishing one moves it to Completed and the next one fills the slot; done-today chores don't take a slot. "See all chores (N) →" (`AllChores.tsx`, a bottom sheet) lists "On Today" and every other open chore **including Backlog ones**; "Swap in" asks which of the 3 comes off ("Add to Today" when a slot is free). A swap calls `setTodayChores` (`src/app/chores/actions.ts`), which saves the whole set as `tasks.today_pick` timestamps (so the removed one doesn't auto-fill straight back) and clears every other chore's pick — in the database, so phone and computer agree. Migration `20261126000001_task_today_pick.sql` (applied by Gus). Picked chores leave the Backlog list. The overdue-reschedule panel still lists every overdue chore, shown or not. Missions are not limited. Verified on real data (3 of 7 shown; a swap updated Today and the database; picks then reset to none) plus unit cases for the slot order and the Good Day chore share. **Still to do:** the "Focus" star (cap 5).
 
 ### Finished things leave the main view: a collapsed "Completed" folder (asked for by Gus)
 Everything struck through used to sit in the middle of Today's lists. Now **finished items move into a collapsed "Completed (N)" folder inside the same place they belong**: in each Milestone of each Goal (so the project organization is kept), under Chores, and at the end of the Agenda (done work blocks and events). `TaskList` (in `TaskSection.tsx`) renders open tasks by deadline and the folder below; `AgendaSection.tsx` does the same for its items. Habit Streak cards are untouched. Tasks in the folder keep their checkbox, so unchecking one reopens it. **A task checked off just now stays in place for 5 s** (`src/lib/use-recently-done.ts`, `useRecentlyDone`) so the "+X XP" / Nivel-up feedback is seen, then moves into the folder — without that hold, the row would remount in the folder the moment the server answered and the XP flash would vanish (the page revalidates when the action returns). Verified against real data (nothing struck outside a folder at load; a ZZ chore stayed, then moved after the hold; unchecking it moved it back and restored XP/areas exactly).
