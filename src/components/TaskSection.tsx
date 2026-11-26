@@ -4,8 +4,10 @@ import { areaColor } from "@/lib/area-colors";
 import { useTaskCompletion } from "@/lib/use-task-completion";
 import { SectionHeading } from "@/components/SectionHeading";
 import { Badge } from "@/components/Badge";
-import { compareByDeadline, deadlineLabel, deadlineStatus } from "@/lib/deadline";
+import { deadlineLabel, deadlineStatus } from "@/lib/deadline";
+import { compareByPriority } from "@/lib/task-view";
 import { useRecentlyDone } from "@/lib/use-recently-done";
+import { Stars } from "@/components/Stars";
 
 export type Task = {
   id: string;
@@ -14,6 +16,8 @@ export type Task = {
   due_date?: string | null;
   // The event this task prepares for, when it has one.
   eventTitle?: string;
+  // Priority stars, 0-3.
+  priority?: number;
 };
 
 // Escalates with the clock: quiet until the window opens, stronger the day
@@ -34,6 +38,8 @@ export function TaskItem({
   playerId,
   today,
   onCompleted,
+  locked = false,
+  children,
 }: {
   task: Task;
   completed: boolean;
@@ -41,6 +47,10 @@ export function TaskItem({
   today: string;
   // Called when the player checks the task off (not when they undo it).
   onCompleted?: (id: string) => void;
+  // Finished on an earlier day: done for good, the checkbox can't undo it.
+  locked?: boolean;
+  // Extra controls shown under the row (stars, date, ...).
+  children?: React.ReactNode;
 }) {
   const {
     isPending,
@@ -64,7 +74,7 @@ export function TaskItem({
         <input
           type="checkbox"
           checked={displayCompleted}
-          disabled={isPending}
+          disabled={isPending || locked}
           onChange={() => {
             if (!displayCompleted) onCompleted?.(task.id);
             toggle();
@@ -76,7 +86,7 @@ export function TaskItem({
           <span
             className={displayCompleted ? "line-through text-foreground/35" : "text-foreground/90"}
           >
-            {task.title}
+            {task.title} <Stars value={task.priority ?? 0} />
           </span>
           {task.eventTitle && (
             <span className="text-xs text-foreground/40">for: {task.eventTitle}</span>
@@ -105,6 +115,7 @@ export function TaskItem({
           🔥 {flash.streakMilestone.day}-day streak! +{flash.streakMilestone.xpAwarded} XP
         </p>
       )}
+      {children}
     </li>
   );
 }
@@ -118,18 +129,26 @@ export function TaskList({
   completedIds,
   playerId,
   today,
+  compare = compareByPriority,
+  lockedIds,
+  renderExtra,
+  openCompleted = false,
 }: {
   tasks: Task[];
   completedIds: Set<string>;
   playerId: string;
   today: string;
+  // Order of the rows; by default more stars first, then the sooner deadline.
+  compare?: (a: Task, b: Task) => number;
+  lockedIds?: Set<string>;
+  renderExtra?: (task: Task) => React.ReactNode;
+  // Start with the Completed folder open (when only completed ones are asked for).
+  openCompleted?: boolean;
 }) {
   const { recent, mark } = useRecentlyDone();
-  const byDeadline = (a: Task, b: Task) =>
-    compareByDeadline({ ...a, due_date: a.due_date ?? null }, { ...b, due_date: b.due_date ?? null });
   const isDone = (t: Task) => completedIds.has(t.id) && !recent.has(t.id);
-  const open = tasks.filter((t) => !isDone(t)).sort(byDeadline);
-  const done = tasks.filter(isDone).sort(byDeadline);
+  const open = tasks.filter((t) => !isDone(t)).sort(compare);
+  const done = tasks.filter(isDone).sort(compare);
 
   const row = (task: Task) => (
     <TaskItem
@@ -139,14 +158,17 @@ export function TaskList({
       playerId={playerId}
       today={today}
       onCompleted={mark}
-    />
+      locked={lockedIds?.has(task.id)}
+    >
+      {renderExtra?.(task)}
+    </TaskItem>
   );
 
   return (
     <div className="flex flex-col gap-2">
       {open.length > 0 && <ul className="flex flex-col gap-2">{open.map(row)}</ul>}
       {done.length > 0 && (
-        <details className="group/done">
+        <details className="group/done" open={openCompleted}>
           <summary className="flex cursor-pointer select-none list-none items-center gap-1.5 py-1 text-xs text-foreground/45 [&::-webkit-details-marker]:hidden">
             <span aria-hidden className="text-[10px] transition-transform group-open/done:rotate-90">
               ▸

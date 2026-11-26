@@ -23,6 +23,7 @@ type Task = {
   is_active: boolean;
   milestone_id: string | null;
   scheduled_activation_date: string | null;
+  priority: number;
   due_date: string | null;
   done_date: string | null;
 };

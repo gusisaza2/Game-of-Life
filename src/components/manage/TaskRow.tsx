@@ -9,6 +9,7 @@ import { AreaIcon } from "@/components/AreaIcon";
 import { deadlineLabel, deadlineStatus, needsDeadline } from "@/lib/deadline";
 import { getTodayDateString } from "@/lib/today";
 import { DeadlineInput } from "./DeadlineInput";
+import { PrioritySelect } from "./PrioritySelect";
 import { EventLinkSelect } from "./EventLinkSelect";
 
 type Area = { id: string; name: string };
@@ -23,6 +24,7 @@ type Task = {
   milestone_id: string | null;
   scheduled_activation_date: string | null;
   event_id?: string | null;
+  priority: number;
   due_date: string | null;
   done_date: string | null;
 };
@@ -212,6 +214,7 @@ export function TaskRow({
         {needsDeadline(tier) && (
           <>
             <DeadlineInput value={dueDate} onChange={setDueDate} allowPast />
+            <PrioritySelect defaultValue={task.priority ?? 0} />
             <EventLinkSelect defaultValue={task.event_id ?? ""} onPick={setDueDate} />
           </>
         )}

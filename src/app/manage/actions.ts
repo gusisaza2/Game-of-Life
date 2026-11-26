@@ -131,6 +131,16 @@ export async function createMilestone(formData: FormData): Promise<{ id: string 
   return data ? { id: data.id } : null;
 }
 
+// Priority stars from a task form: 0-3, never on habits. Undefined when the
+// form didn't send any, so an edit leaves the stars alone.
+function resolvePriority(tier: string, formData: FormData): number | undefined {
+  if (tier === "habit") return 0;
+  const raw = formData.get("priority");
+  if (raw === null) return undefined;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : undefined;
+}
+
 export async function createTask(formData: FormData): Promise<{ id: string } | null> {
   const playerId = String(formData.get("playerId"));
   const title = String(formData.get("title") ?? "").trim();
@@ -164,6 +174,7 @@ export async function createTask(formData: FormData): Promise<{ id: string } | n
       recurrence,
       due_date: deadline.dueDate,
       event_id: resolveEventId(tier, formData),
+      priority: resolvePriority(tier, formData) ?? 0,
       is_active: isActive,
     })
     .select("id")
@@ -202,6 +213,8 @@ export async function updateTask(formData: FormData) {
       due_date: deadline.dueDate,
       event_id: resolveEventId(tier, formData),
       milestone_id: resolveMilestoneId(tier, milestoneId),
+      // An undefined value is dropped from the update, keeping the stars.
+      priority: resolvePriority(tier, formData),
     })
     .eq("id", taskId);
 

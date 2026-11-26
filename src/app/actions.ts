@@ -27,6 +27,11 @@ export async function updateAvatar(playerId: string, config: AvatarConfig): Prom
   revalidatePath("/");
 }
 
+// Every page that lists tasks and their completion.
+function revalidateTaskViews() {
+  for (const path of ["/", "/missions", "/chores"]) revalidatePath(path);
+}
+
 export async function toggleTaskCompletion(
   taskId: string,
   playerId: string,
@@ -119,7 +124,7 @@ export async function toggleTaskCompletion(
       }
     }
 
-    revalidatePath("/");
+    revalidateTaskViews();
     return null;
   }
 
@@ -132,7 +137,7 @@ export async function toggleTaskCompletion(
     .eq("completed_date", date)
     .limit(1);
   if (alreadyDone && alreadyDone.length > 0) {
-    revalidatePath("/");
+    revalidateTaskViews();
     return null;
   }
 
@@ -153,7 +158,7 @@ export async function toggleTaskCompletion(
       .single(),
   ]);
   if (!player || !task) {
-    revalidatePath("/");
+    revalidateTaskViews();
     return null;
   }
 
@@ -163,7 +168,7 @@ export async function toggleTaskCompletion(
     .eq("id", task.area_id)
     .single();
   if (!area) {
-    revalidatePath("/");
+    revalidateTaskViews();
     return null;
   }
 
@@ -276,6 +281,6 @@ export async function toggleTaskCompletion(
       .eq("id", playerId);
   }
 
-  revalidatePath("/");
+  revalidateTaskViews();
   return { xpAwarded: completionXp, xpType, nivelUp, streakMilestone };
 }

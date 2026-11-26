@@ -45,7 +45,7 @@ export default async function ManagePage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, tier, area_id, recurrence, is_active, milestone_id, scheduled_activation_date, due_date, done_date, event_id",
+        "id, title, tier, area_id, recurrence, is_active, milestone_id, scheduled_activation_date, due_date, done_date, event_id, priority",
       )
       .eq("player_id", player.id)
       .order("title"),

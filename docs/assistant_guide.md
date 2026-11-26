@@ -54,6 +54,7 @@ Campos que debes enviar:
   - **`chore`**: gestiones pequeñas (agendar una cita, responder algo). No lleva hito. Da 1 XP.
   - **`habit`**: algo que se repite todos los días. **No crees hábitos sin preguntarle antes a Gus** (ver sección 7).
 - **`due_date` es obligatoria en `main_task` y `chore`.** Los hábitos nunca llevan fecha.
+- `priority`: estrellas de prioridad, `0` a `3` (opcional; `0` = sin decidir). Solo ponlas si Gus te dice la importancia; no cambian el XP y no deberían ser casi todas `3`.
 - `event_id`: si la tarea es preparación de un evento, pon el `id` del evento. Su `due_date` debería ser, como máximo, el día anterior al evento.
 - Déjala con `is_active` = `true` (el valor por defecto) para que aparezca en la app. `recurrence` déjalo en su valor por defecto (`daily`); en tareas con fecha no significa nada.
 

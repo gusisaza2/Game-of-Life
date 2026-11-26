@@ -13,7 +13,8 @@ import { monthlyCompletionStats } from "@/lib/habit-stats";
 import { perAreaDailyXpCeiling } from "@/lib/leveling";
 import { compareByDeadline, todayPlacement } from "@/lib/deadline";
 import { TaskSection } from "@/components/TaskSection";
-import { MissionGroups, type MissionGroup } from "@/components/MissionGroups";
+import { TaskBoard } from "@/components/TaskBoard";
+import type { BoardTask } from "@/lib/mission-groups";
 import { OverduePanel, type OverdueItem } from "@/components/OverduePanel";
 import { BacklogList } from "@/components/BacklogList";
 import { AgendaSection, type AgendaEvent } from "@/components/AgendaSection";
@@ -21,7 +22,6 @@ import { agendaPlacement, compareByStart } from "@/lib/events";
 import { EndedBlockPrompt, type EndedBlock } from "@/components/EndedBlockPrompt";
 import { toMinutes } from "@/lib/time-blocks";
 import { chooseTodayChores } from "@/lib/chores";
-import { AllChores } from "@/components/AllChores";
 import { LevelProgress } from "@/components/LevelProgress";
 import { Badge } from "@/components/Badge";
 import { HabitStreakCard } from "@/components/HabitStreakCard";
@@ -85,7 +85,7 @@ export default async function TodayPage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, tier, area_id, milestone_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id, today_pick",
+        "id, title, tier, area_id, milestone_id, current_streak, longest_streak, activated_at, due_date, done_date, event_id, today_pick, priority",
       )
       .eq("player_id", player.id)
       .eq("is_active", true)
@@ -211,6 +211,7 @@ export default async function TodayPage() {
         id: t.id,
         title: t.title,
         due_date: t.due_date,
+        priority: t.priority,
         today_pick: t.today_pick,
         hasBlockToday: plannedTodayTaskIds.has(t.id),
         due: todayPlacement(t, today) === "shown",
@@ -292,46 +293,28 @@ export default async function TodayPage() {
   const mainTasks = onToday
     .filter((t) => t.tier === "main_task")
     .map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
-  // Missions grouped the way they're organized: Goal -> Milestone (in its own
-  // order). The Goal with the most urgent open Mission comes first.
+  // Today's Missions with their place in the Goal -> Milestone structure; the
+  // board below organizes and filters them the way the player chooses.
   const milestoneById = new Map((milestoneRows ?? []).map((m) => [m.id, m]));
   const goalById = new Map((goalRows ?? []).map((g) => [g.id, g]));
-  const byGoal = new Map<string, Map<string, typeof mainTasks>>();
-  for (const task of mainTasks) {
-    const milestone = task.milestone_id ? milestoneById.get(task.milestone_id) : undefined;
-    const goalId = milestone?.goal_id ?? "none";
-    const milestoneId = milestone?.id ?? "none";
-    if (!byGoal.has(goalId)) byGoal.set(goalId, new Map());
-    const goalMilestones = byGoal.get(goalId)!;
-    goalMilestones.set(milestoneId, [...(goalMilestones.get(milestoneId) ?? []), task]);
-  }
-  const earliestOpenDue = (tasksOfGoal: typeof mainTasks) =>
-    tasksOfGoal
-      .filter((t) => !completedIds.has(t.id) && t.due_date)
-      .map((t) => t.due_date as string)
-      .sort()[0] ?? "9999-12-31";
-  const missionGroups: MissionGroup[] = [...byGoal.entries()]
-    .map(([goalId, milestonesMap]) => {
-      const goal = goalById.get(goalId);
-      return {
-        goalId,
-        title: goal?.title ?? "Other Missions",
-        areaName: goal ? areaNameById.get(goal.area_id) : undefined,
-        milestones: [...milestonesMap.entries()]
-          .map(([milestoneId, milestoneTasks]) => ({
-            id: milestoneId,
-            title: milestoneById.get(milestoneId)?.title ?? "No milestone",
-            order: milestoneById.get(milestoneId)?.order_index ?? 9999,
-            tasks: milestoneTasks,
-          }))
-          .sort((a, b) => a.order - b.order),
-      };
-    })
-    .sort((a, b) => {
-      const dueA = earliestOpenDue(a.milestones.flatMap((m) => m.tasks));
-      const dueB = earliestOpenDue(b.milestones.flatMap((m) => m.tasks));
-      return dueA.localeCompare(dueB) || a.title.localeCompare(b.title);
-    });
+  const boardMissions: BoardTask[] = mainTasks.map((t) => {
+    const milestone = t.milestone_id ? milestoneById.get(t.milestone_id) : undefined;
+    const goal = milestone ? goalById.get(milestone.goal_id) : undefined;
+    return {
+      id: t.id,
+      title: t.title,
+      areaName: t.areaName,
+      due_date: t.due_date,
+      priority: t.priority,
+      eventTitle: t.eventTitle,
+      goalId: goal?.id ?? "none",
+      goalTitle: goal?.title ?? "Other Missions",
+      goalAreaName: goal ? areaNameById.get(goal.area_id) : undefined,
+      milestoneId: milestone?.id ?? "none",
+      milestoneTitle: milestone?.title ?? "No milestone",
+      milestoneOrder: milestone?.order_index ?? 9999,
+    };
+  });
 
   // Open Missions/Chores whose date has passed: offered for rescheduling in
   // bulk (Missions are labelled with their Goal, Chores with "Chores").
@@ -355,14 +338,6 @@ export default async function TodayPage() {
     ...tasksWithArea.filter((t) => todayChoreIds.has(t.id)),
     ...onToday.filter((t) => t.tier === "chore" && (completedIds.has(t.id) || t.done_date)),
   ].map((t) => ({ ...t, eventTitle: t.event_id ? eventTitleById.get(t.event_id) : undefined }));
-  const toChoreRow = (t: (typeof openChores)[number]) => ({
-    id: t.id,
-    title: t.title,
-    due_date: t.due_date,
-    areaName: t.areaName,
-  });
-  const activeChores = openChores.filter((t) => todayChoreIds.has(t.id)).sort(compareByDeadline).map(toChoreRow);
-  const otherChores = openChores.filter((t) => !todayChoreIds.has(t.id)).sort(compareByDeadline).map(toChoreRow);
 
   // Habit Stats — this month's completion rate, shown right on the card so
   // it stays visible even when "days in a row" is 0 (design discussion:
@@ -491,8 +466,10 @@ export default async function TodayPage() {
 
       <div className="w-full max-w-md flex flex-col gap-6">
         <OverduePanel items={overdueItems} today={today} />
-        <MissionGroups
-          groups={missionGroups}
+        <TaskBoard
+          kind="mission"
+          mode="today"
+          tasks={boardMissions}
           completedIds={completedIds}
           playerId={player.id}
           today={today}
@@ -505,7 +482,9 @@ export default async function TodayPage() {
             playerId={player.id}
             today={today}
           />
-          <AllChores active={activeChores} others={otherChores} today={today} />
+          <Link href="/chores" className="link-hover self-start text-xs text-foreground/55">
+            See all chores ({openChores.length}) →
+          </Link>
         </div>
         <BacklogList tasks={backlog} today={today} />
       </div>

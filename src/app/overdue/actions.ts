@@ -35,6 +35,6 @@ export async function rescheduleTasks(updates: { id: string; dueDate: string }[]
     moved += data?.length ?? 0;
   }
 
-  for (const path of ["/", "/manage", "/plan"]) revalidatePath(path);
+  for (const path of ["/", "/manage", "/plan", "/missions", "/chores"]) revalidatePath(path);
   return moved;
 }

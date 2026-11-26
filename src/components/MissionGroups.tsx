@@ -1,5 +1,4 @@
 import { AreaIcon } from "@/components/AreaIcon";
-import { SectionHeading } from "@/components/SectionHeading";
 import { TaskList, type Task } from "@/components/TaskSection";
 import { areaColor } from "@/lib/area-colors";
 import { deadlineStatus } from "@/lib/deadline";
@@ -11,36 +10,31 @@ export type MissionGroup = {
   milestones: { id: string; title: string; tasks: Task[] }[];
 };
 
-// Today's Missions the way they're organized behind the scenes: by Goal
-// (project), and inside each Goal by Milestone, in the Milestone's own order.
-// Each Goal is a collapsible card whose summary tells at a glance how much is
-// open and how much is overdue; the most urgent Goal starts open.
+// Missions the way they're organized behind the scenes: by Goal (project),
+// and inside each Goal by Milestone, in the Milestone's own order. Each Goal
+// is a collapsible card whose summary tells at a glance how much is open and
+// how much is overdue; the most urgent Goal starts open.
 export function MissionGroups({
   groups,
   completedIds,
   playerId,
   today,
+  lockedIds,
+  renderExtra,
+  openAll = false,
+  openCompleted = false,
 }: {
   groups: MissionGroup[];
   completedIds: Set<string>;
   playerId: string;
   today: string;
+  lockedIds?: Set<string>;
+  renderExtra?: (task: Task) => React.ReactNode;
+  // Open every Goal and Milestone (used while a filter is narrowing the list).
+  openAll?: boolean;
+  openCompleted?: boolean;
 }) {
-  const all = groups.flatMap((g) => g.milestones.flatMap((m) => m.tasks));
-  if (all.length === 0) return null;
-  const doneCount = all.filter((t) => completedIds.has(t.id)).length;
-
   return (
-    <section className="w-full max-w-md">
-      <div className="mb-2 flex items-baseline justify-between">
-        <SectionHeading className="text-xs font-semibold uppercase tracking-wide text-foreground/45">
-          Misiones
-        </SectionHeading>
-        <span className="text-xs tabular-nums text-foreground/35">
-          {doneCount}/{all.length}
-        </span>
-      </div>
-
       <div className="flex flex-col gap-2">
         {groups.map((group, index) => {
           const tasks = group.milestones.flatMap((m) => m.tasks);
@@ -67,7 +61,7 @@ export function MissionGroups({
           return (
             <details
               key={group.goalId}
-              open={index === 0}
+              open={openAll || index === 0}
               className="group rounded-xl border border-foreground/20 bg-surface"
               style={{ borderLeft: `3px solid ${accent}` }}
             >
@@ -99,7 +93,7 @@ export function MissionGroups({
                   // still open) starts open; the later ones wait collapsed.
                   const isCurrent = milestone.id === currentMilestoneId;
                   return (
-                    <details key={milestone.id} open={isCurrent} className="group/ms">
+                    <details key={milestone.id} open={openAll || isCurrent} className="group/ms">
                       <summary className="flex cursor-pointer select-none list-none items-baseline justify-between gap-2 py-1 text-xs text-foreground/55 [&::-webkit-details-marker]:hidden">
                         <span className="flex min-w-0 items-baseline gap-1.5">
                           <span aria-hidden className="text-[10px] text-foreground/35 transition-transform group-open/ms:rotate-90">
@@ -117,6 +111,9 @@ export function MissionGroups({
                           completedIds={completedIds}
                           playerId={playerId}
                           today={today}
+                          lockedIds={lockedIds}
+                          renderExtra={renderExtra}
+                          openCompleted={openCompleted}
                         />
                       </div>
                     </details>
@@ -127,6 +124,5 @@ export function MissionGroups({
           );
         })}
       </div>
-    </section>
   );
 }

@@ -32,5 +32,6 @@ export async function setTodayChores(ids: string[]): Promise<boolean> {
   );
 
   revalidatePath("/");
+  revalidatePath("/chores");
   return results.every((r) => !r.error);
 }

@@ -5,6 +5,7 @@ import { createTask } from "@/app/manage/actions";
 import { TIER_LABELS } from "@/lib/task-tiers";
 import { needsDeadline } from "@/lib/deadline";
 import { DeadlineInput } from "./DeadlineInput";
+import { PrioritySelect } from "./PrioritySelect";
 import { EventLinkSelect } from "./EventLinkSelect";
 
 type Area = { id: string; name: string };
@@ -79,6 +80,7 @@ export function TaskForm({
       {needsDeadline(tier) && (
         <>
           <DeadlineInput value={dueDate} onChange={setDueDate} />
+          <PrioritySelect />
           <EventLinkSelect onPick={setDueDate} />
         </>
       )}
